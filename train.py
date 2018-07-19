@@ -44,16 +44,27 @@ logging.info("Creating widgets.log file")
 
 # -- Basic tools --
 
+from matplotlib import patches 
+
+
 def img_handle(
-    path: Path, path2: Optional[Path] = None
+    path: Path, segmentation: Optional[Path] = None, bbox: Optional[Path] = None
 ) -> Tuple[Tuple[int, ...], Image]:
     data = cv2.imread(path.as_posix(), cv2.IMREAD_UNCHANGED)
     _, fname = mkstemp(suffix=".png")
     fig, ax = plt.subplots()
     ax.imshow(data)
-    if path2 is not None:
+    if segmentation is not None:
         data = cv2.imread(path2.as_posix(), cv2.IMREAD_UNCHANGED)
         ax.imshow(data, alpha=.2)
+    if bbox is not None:
+        with bbox.open('r') as fh:
+            for line in fh.readlines():
+                tag, xmin, ymin, xmax, ymax = (int(x) for x in line.strip().split())
+                rect = patches.Rectangle((xmin,ymin),xmax-xmin,ymax-ymin,
+                                         linewidth=2,edgecolor='blue',facecolor='none')
+                ax.add_patch(rect)
+              
     fig.savefig(fname)
     plt.close(fig)
     return data.shape, Image(fname)
@@ -937,6 +948,367 @@ class Segmentation(MLWidget):
                 body=json.dumps(body, indent=2)
             )
         )
+        c = requests.post(
+            "http://{host}:{port}/train".format(host=host, port=port),
+            json.dumps(body),
+        )
+        logging.info(
+            "Reply from training service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+
+        print(json.dumps(c.json(), indent=2))
+
+
+
+class Detection(MLWidget):
+    
+    @MLWidget.output.capture(clear_output=True)
+    def display_img(self, args):
+        for path in args["new"]:
+            shape, img = img_handle(Path(path))
+            if self.img_width.value == "":
+                self.img_width.value = str(shape[0])
+            if self.img_height.value == "":
+                self.img_height.value = str(shape[1])
+            _, img = img_handle(Path(path), bbox=self.file_dict[Path(path)])
+            display(img)
+    
+    @MLWidget.output.capture(clear_output=True)
+    def update_train_file_list(self, *args):
+        # print (Path(self.training_repo.value).read_text().split('\n'))
+        self.file_dict = {
+            Path(x.split()[0]): Path(x.split()[1])
+            for x in Path(self.training_repo.value).read_text().split("\n")
+            if len(x.split()) >= 2
+        }
+
+        self.file_list.options = [
+            fh.as_posix()
+            for fh in sample_from_iterable(self.file_dict.keys(), 10)
+        ]
+
+    @MLWidget.output.capture(clear_output=True)
+    def update_test_file_list(self, *args):
+        # print (Path(self.training_repo.value).read_text().split('\n'))
+        self.file_dict = {
+            Path(x.split()[0]): Path(x.split()[1])
+            for x in Path(self.testing_repo.value).read_text().split("\n")
+            if len(x.split()) >= 2
+        }
+
+        self.file_list.options = [
+            fh.as_posix()
+            for fh in sample_from_iterable(self.file_dict.keys(), 10)
+        ]
+
+    def __init__(
+        self,
+        sname: str,
+        *args,  # unnamed parameters are forbidden
+        training_repo: Path = None,
+        testing_repo: Path = None,
+        host: str = "localhost",
+        port: int = 1234,
+        nclasses: int = -1,
+        model_repo: Optional[str] = None,
+        img_width: Optional[int] = None,
+        img_height: Optional[int] = None,
+        base_lr: float = 1e-4,
+        iterations: int = 10000,
+        snapshot_interval: int = 5000,
+        test_interval: int = 1000,
+        gpuid: int = 0,
+        layers: List[str] = [],
+        template: Optional[str] = None,
+        mirror: bool = False,
+        rotate: bool = False,
+        tsplit: float = 0.0,
+        finetune: bool = False,
+        resume: bool = False,
+        bw: bool = False,
+        crop_size: int = -1,
+        batch_size: int = 32,
+        test_batch_size: int = 16,
+        iter_size: int = 1,
+        solver_type: str = "SGD",
+        noise_prob: float = 0.0,
+        distort_prob: float = 0.0,
+        test_init: bool = False,
+        class_weights: List[float] = [],
+        weights: Path = None,
+        tboard: Optional[Path] = None,
+        ignore_label: int = -1,
+        multi_label: bool = False,
+        regression: bool = False,
+        rand_skip: int = 0,
+        ctc: bool = False,
+        timesteps: int = 32,
+        unchanged_data: bool = False,
+    ) -> None:
+
+        local_vars = locals()
+        params = {
+            # no access to eval(k) inside the comprehension
+            k: (eval(k, local_vars), v)
+            for k, v in get_type_hints(self.__init__).items()
+            if k not in ["return", "sname"]
+        }
+        
+        super().__init__(sname, params)
+        
+        self.train_labels = Button(
+            description=Path(self.training_repo.value).name
+        )
+        self.test_labels = Button(
+            description=Path(self.testing_repo.value).name
+        )
+
+        self.file_list = SelectMultiple(
+            options=[],
+            value=[],
+            rows=10,
+            description="File list",
+            layout=Layout(height="200px", width="auto"),
+        )
+
+        self.train_labels.on_click(self.update_train_file_list)
+        self.test_labels.on_click(self.update_test_file_list)
+
+        self.file_list.observe(self.display_img, names="value")
+
+        self._img_explorer = VBox(
+            [
+                HBox([HBox([self.train_labels, self.test_labels])]),
+                self.file_list,
+                self.output,
+            ],
+            layout=Layout(width="650px")
+        )
+
+        self._main_elt = HBox(
+            [self._configuration, self._img_explorer],
+            layout=Layout(width="900px"),
+        )
+
+        
+        self.update_label_list(())
+
+    @MLWidget.output.capture(clear_output=True)
+    def run(self, *_) -> None:
+        width = int(self.img_width.value)
+        height = int(self.img_height.value)
+        crop_size = int(self.crop_size.value)
+
+        nclasses = int(self.nclasses.value)
+        if nclasses == -1:
+            nclasses = len(os.walk(self.training_repo.value).next()[1])
+
+        host = self.host.value
+        port = self.port.value
+        description = "imagenet classifier"
+        mllib = "caffe"
+
+        model = {
+            "templates": "../templates/caffe/",
+            "repository": self.model_repo.value,
+            "create_repository": True,
+        }
+
+        if self.weights.value:
+            if not Path(self.model_repo.value).is_dir():
+                logging.warn(
+                    "Creating repository directory: {}".format(
+                        self.model_repo.value
+                    )
+                )
+                Path(self.model_repo.value).mkdir(parents=True)
+                # change permission if dede is not run by current user
+                Path(self.model_repo.value).chmod(0o777)
+
+            shutil.copy(self.weights.value, self.model_repo.value + "/")
+
+        parameters_input = {
+            "connector": "image",
+            "width": width,
+            "height": height,
+            "bw": self.bw.value,
+            "db": True,
+            "bbox": True
+        }
+
+        if self.multi_label.value:
+            parameters_input["multi_label"] = True
+            parameters_input["db"] = False
+        if self.ctc.value:
+            parameters_input["ctc"] = True
+        if not self.finetune.value:
+            if self.template.value:
+                parameters_mllib = {
+                    "template": self.template.value,
+                    "nclasses": nclasses,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                    "layers": eval(self.layers.value),  # List of strings
+                    "db": True,
+                }
+            else:
+                parameters_mllib = {
+                    "nclasses": nclasses,
+                    "mirror": self.mirror.value,
+                    "rotate": self.rotate.value,
+                }
+        else:
+            if self.template.value:
+                parameters_mllib = {
+                    "template": self.template.value,
+                    "finetuning": True,
+                    "nclasses": nclasses,
+                    "weights": self.weights.value,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                }
+            else:
+                parameters_mllib = {
+                    "finetuning": True,
+                    "nclasses": nclasses,
+                    "weights": self.weights.value,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                }
+        if self.multi_label.value:
+            parameters_mllib["db"] = False
+
+        if crop_size > 0:
+            parameters_mllib["crop_size"] = crop_size
+        if self.noise_prob.value > 0.0:
+            parameters_mllib["noise"] = {
+                "all_effects": True,
+                "prob": self.noise_prob.value,
+            }
+        if self.distort_prob.value > 0.0:
+            parameters_mllib["distort"] = {
+                "all_effects": True,
+                "prob": self.distort_prob.value,
+            }
+        parameters_mllib["gpu"] = True
+        parameters_mllib["gpuid"] = self.gpuid.value
+        if self.regression.value:
+            parameters_mllib["regression"] = True
+
+        parameters_output = {}
+        # print (parameters_input)
+        # print (parameters_mllib)
+        # pserv = dd.put_service(self.sname.value,model,description,mllib,
+        #                       parameters_input,parameters_mllib,parameters_output)
+
+        body: Dict[str, Any] = {
+            "description": description,
+            "mllib": mllib,
+            "type": "supervised",
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "model": model,
+        }
+
+        c = requests.get(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            )
+        )
+        logging.info(
+            "Current state of service '{sname}':\n  {json}".format(
+                sname=self.sname, json=c.json()
+            )
+        )
+        # useful for the clear() method
+        if c.json()["status"]["msg"] != "NotFound":
+            self.clear()
+            logging.warn(
+                (
+                    "Since service '{sname}' was still there, "
+                    "it has been fully cleared: {json}"
+                ).format(sname=self.sname, json=c.json())
+            )
+
+        logging.warn(
+            "Creating service '{sname}':  {body}".format(
+                sname=self.sname, body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.put(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            ),
+            json.dumps(body),
+        )
+        logging.warn(
+            "Reply from creating service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+
+        train_data = [self.training_repo.value]
+        parameters_input = {
+            "test_split": self.tsplit.value,
+            "shuffle": True,
+            "db": True,
+        }
+        if self.testing_repo.value != "":
+            train_data.append(self.testing_repo.value)
+            parameters_input = {"shuffle": True}
+
+        if self.multi_label.value:
+            parameters_input["db"] = False
+        parameters_mllib = {
+            "gpu": True,
+            "gpuid": self.gpuid.value,
+            "resume": self.resume.value,
+            "net": {
+                "batch_size": self.batch_size.value,
+                "test_batch_size": self.test_batch_size.value,
+            },
+            "solver": {
+                "test_initialization": self.test_init.value,
+                "iterations": self.iterations.value,
+                "test_interval": self.test_interval.value,
+                "snapshot": self.snapshot_interval.value,
+                "base_lr": self.base_lr.value,
+                "solver_type": self.solver_type.value,
+                "iter_size": self.iter_size.value,
+            },
+            "bbox": True
+        }
+        ##TODO: lr policy as arguments
+        # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
+        if self.rand_skip.value > 0 and self.resume.value:
+            parameters_mllib["solver"]["rand_skip"] = self.rand_skip.value
+        if self.class_weights.value:
+            parameters_mllib["class_weights"] = eval(self.class_weights.value)
+        if self.ignore_label.value >= 0:
+            parameters_mllib["ignore_label"] = self.ignore_label.value
+        if self.timesteps.value:
+            parameters_mllib["timesteps"] = self.timesteps.value
+
+        parameters_output = {"measure": ["map"]}
+
+
+        body = {
+            "service": self.sname,
+            "async": True,
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "data": train_data,
+        }
+
+        logging.info("Start training phase: {body}".format(body=body))
         c = requests.post(
             "http://{host}:{port}/train".format(host=host, port=port),
             json.dumps(body),
