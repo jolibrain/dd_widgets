@@ -81,7 +81,7 @@ def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
 
 class MLWidget(object):
 
-    _fields: Dict[str, str] = {
+    _fields = { # typing: Dict[str, str]
         "sname": "Model name",
         "training_repo": "Training directory",
         "testing_repo": "Testing directory",
@@ -89,9 +89,9 @@ class MLWidget(object):
 
     _widget_type = {int: IntText, float: FloatText, bool: Checkbox}
 
-    output: Output = Output(layout=Layout(max_width='650px'))
-    host: Text
-    port: Text
+    output = Output(layout=Layout(max_width='650px')) # typing: Output
+    #host: Text
+    #port: Text
         
     def __init__(self, sname: str, params: Dict[str, Tuple[Any, type]], *args):
         self.sname = sname
@@ -100,7 +100,7 @@ class MLWidget(object):
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
         
-        self._widgets: List[Widget] = [
+        self._widgets = [ # typing: List[Widget]
             HTML(value="<h2>{task} task: {sname}</h2>".format(
                 task=self.__class__.__name__,
                 sname=self.sname
@@ -275,7 +275,7 @@ class Classification(MLWidget):
         rand_skip: int = 0,
         ctc: bool = False,
         timesteps: int = 32,
-        unchanged_data: bool = False,
+        unchanged_data: bool = False
     ) -> None:
 
         local_vars = locals()
@@ -435,7 +435,7 @@ class Classification(MLWidget):
         # pserv = dd.put_service(self.sname.value,model,description,mllib,
         #                       parameters_input,parameters_mllib,parameters_output)
 
-        body: Dict[str, Any] = {
+        body = { # typing: Dict[str, Any]
             "description": description,
             "mllib": mllib,
             "type": "supervised",
@@ -642,7 +642,7 @@ class Segmentation(MLWidget):
         rand_skip: int = 0,
         ctc: bool = False,
         timesteps: int = 32,
-        unchanged_data: bool = False,
+        unchanged_data: bool = False
     ) -> None:
         
 
@@ -932,7 +932,7 @@ class Segmentation(MLWidget):
 
         parameters_output = {"measure": ["acc"]}
 
-        body: Dict[str, Any] = {
+        body = {  # typing: Dict[str, Any]
             "service": self.sname,
             "async": True,
             "parameters": {
@@ -1045,7 +1045,7 @@ class Detection(MLWidget):
         rand_skip: int = 0,
         ctc: bool = False,
         timesteps: int = 32,
-        unchanged_data: bool = False,
+        unchanged_data: bool = False
     ) -> None:
 
         local_vars = locals()
@@ -1203,7 +1203,7 @@ class Detection(MLWidget):
         # pserv = dd.put_service(self.sname.value,model,description,mllib,
         #                       parameters_input,parameters_mllib,parameters_output)
 
-        body: Dict[str, Any] = {
+        body = { #: Dict[str, Any] = {
             "description": description,
             "mllib": mllib,
             "type": "supervised",
