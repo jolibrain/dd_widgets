@@ -140,6 +140,7 @@ class Classification(object):
         *args,  # unnamed parameters are forbidden
         training_repo: Path = None,
         testing_repo: Path = None,
+        test_split: float = 0,
         host: str = "localhost",
         port: int = 1234,
         nclasses: int = -1,
@@ -168,7 +169,6 @@ class Classification(object):
         distort_prob: float = 0.0,
         test_init: bool = False,
         class_weights: List[float] = [],
-        segmentation: bool = False,
         weights: Path = None,
         tboard: Optional[Path] = None,
         ignore_label: int = -1,
@@ -237,167 +237,6 @@ class Classification(object):
 
     @output.capture(clear_output=True)
     def run(self, *_) -> None:
-        # ça me dépanne pour le moment
-        print(get_type_hints(self.__init__))
-
-    def _ipython_display_(self):
-        self._main_elt._ipython_display_()
-
-
-class Segmentation(Classification):
-    
-    @Classification.output.capture(clear_output=True)
-    def update_train_file_list(self, *args):
-        # print (Path(self.training_repo.value).read_text().split('\n'))
-        self.file_dict = {
-            Path(x.split()[0]): Path(x.split()[1])
-            for x in Path(self.training_repo.value).read_text().split("\n")
-            if len(x.split()) >= 2
-        }
-
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(self.file_dict.keys(), 10)
-        ]
-        
-    @Classification.output.capture(clear_output=True)
-    def update_test_file_list(self, *args):
-        # print (Path(self.training_repo.value).read_text().split('\n'))
-        self.file_dict = {
-            Path(x.split()[0]): Path(x.split()[1])
-            for x in Path(self.testing_repo.value).read_text().split("\n")
-            if len(x.split()) >= 2
-        }
-
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(self.file_dict.keys(), 10)
-        ]
-
-    def __init__(
-        self,
-        sname: str,
-        *args,  # unnamed parameters are forbidden
-        training_repo: Path = None,
-        testing_repo: Path = None,
-        host: str = "localhost",
-        port: int = 1234,
-        nclasses: int = -1,
-        model_repo: Optional[str] = None,
-        img_width: Optional[int] = None,
-        img_height: Optional[int] = None,
-        base_lr: float = 1e-3,
-        iterations: int = 10000,
-        snapshot_interval: int = 5000,
-        test_interval: int = 1000,
-        gpuid: int = 0,
-        layers: List[str] = [],
-        template: Optional[str] = None,
-        mirror: bool = True,
-        rotate: bool = True,
-        tsplit: float = 0.0,
-        finetune: bool = False,
-        resume: bool = False,
-        bw: bool = False,
-        crop_size: int = -1,
-        batch_size: int = 32,
-        test_batch_size: int = 16,
-        iter_size: int = 1,
-        solver_type: str = "SGD",
-        noise_prob: float = 0.0,
-        distort_prob: float = 0.0,
-        test_init: bool = False,
-        class_weights: List[float] = [],
-        segmentation: bool = False,
-        weights: Path = None,
-        model_postfix: str = "",
-        tboard: Optional[Path] = None,
-        ignore_label: int = -1,
-        multi_label: bool = False,
-        regression: bool = False,
-        rand_skip: int = 0,
-        ctc: bool = False,
-        timesteps: int = 32,
-        unchanged_data: bool = False,
-    ) -> None:
-
-        self.del_request = None
-
-        elts = {
-            k: v
-            for k, v in get_type_hints(self.__init__).items()
-            if k != "return"
-        }
-
-        self._widgets = []
-
-        self.run_button = Button(description="Run")
-        self._widgets.append(self.run_button)
-
-        for elt, type_hint in elts.items():
-            self._add_widget(elt, eval(elt), type_hint)
-
-        self._configuration = VBox(self._widgets)
-
-        self.train_labels = Button(
-            description=Path(self.training_repo.value).name
-        )
-        self.test_labels = Button(
-            description=Path(self.testing_repo.value).name
-        )
-
-        self.file_list = SelectMultiple(
-            options=[],
-            value=[],
-            rows=10,
-            description="File list",
-            layout=Layout(width="95%", height="200px"),
-        )
-
-        # self.testing_repo.observe(self.update_test_button, names="value")
-        # self.training_repo.observe(self.update_train_button, names="value")
-
-        self.train_labels.on_click(self.update_train_file_list)
-        self.test_labels.on_click(self.update_test_file_list)
-
-        self.file_list.observe(self.display_img, names="value")
-
-        self._img_explorer = VBox(
-            [
-                HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list,
-                self.output,
-            ]
-        )
-
-        self._main_elt = HBox(
-            [self._configuration, self._img_explorer],
-            layout=Layout(width="100%"),
-        )
-
-        self.run_button.on_click(self.run)
-        self.update_label_list(())
-
-    
-    @Classification.output.capture(clear_output=True)
-    def display_img(self, args):
-        for path in args["new"]:
-            shape, img = img_handle(Path(path))
-            if self.img_width.value == "":
-                self.img_width.value = str(shape[0])
-            if self.img_height.value == "":
-                self.img_height.value = str(shape[1])
-            display(
-                img
-            )  # TODO display next to each other with shape info as well
-            _, img = img_handle(Path(path), self.file_dict[Path(path)])
-            display(img)
-            # display(Image(path))
-            # integrate THIS : https://github.com/alx/react-bounding-box
-            # (cv2.imread(self.file_dict[Path(path)].as_posix()))
-
-    @Classification.output.capture(clear_output=True)
-    def run(self, *_) -> None:
         width = int(self.img_width.value)
         height = int(self.img_height.value)
         crop_size = int(self.crop_size.value)
@@ -415,12 +254,15 @@ class Segmentation(Classification):
         model = {
             "templates": "../templates/caffe/",
             "repository": self.model_repo.value,
+            "create_repository": True,
         }
 
         if self.weights.value:
             if not Path(self.model_repo.value).is_dir():
                 logging.warn(f"Creating repository directory: {self.model_repo.value}")
                 Path(self.model_repo.value).mkdir(parents=True)
+                # change permission if dede is not run by current user
+                Path(self.model_repo.value).chmod(0o777)
             import shutil
 
             shutil.copy(self.weights.value, self.model_repo.value + "/")
@@ -431,8 +273,7 @@ class Segmentation(Classification):
             "bw": self.bw.value,
             "db": True,
         }
-        if self.segmentation.value:
-            parameters_input["segmentation"] = True
+        
         if self.multi_label.value:
             parameters_input["multi_label"] = True
             parameters_input["db"] = False
@@ -445,7 +286,7 @@ class Segmentation(Classification):
                     "nclasses": nclasses,
                     "rotate": self.rotate.value,
                     "mirror": self.mirror.value,
-                    "layers": self.layers.value,
+                    "layers": eval(self.layers.value),  # List of strings
                     "db": True,
                 }
             else:
@@ -540,8 +381,7 @@ class Segmentation(Classification):
         if self.testing_repo.value != "":
             train_data.append(self.testing_repo.value)
             parameters_input = {"shuffle": True}
-        if True:  # self.segmentation:
-            parameters_input["segmentation"] = True
+
         if self.multi_label.value:
             parameters_input["db"] = False
         parameters_mllib = {
@@ -573,9 +413,7 @@ class Segmentation(Classification):
         if self.timesteps.value:
             parameters_mllib["timesteps"] = self.timesteps.value
 
-        if True:  # args.segmentation:
-            parameters_output = {"measure": ["acc"]}
-        elif self.multi_label.value and self.regression.value:
+        if self.multi_label.value and self.regression.value:
             parameters_output = {
                 "measure": [
                     "kl",
@@ -612,8 +450,375 @@ class Segmentation(Classification):
         logging.info(f"Start training phase:\n {body}")
         c = requests.post(f"http://{host}:{port}/train", json.dumps(body))
         logging.info(f"Reply from training service '{self.sname.value}':\n  {c.json()}")
-                     
+
+    def _ipython_display_(self):
+        self._main_elt._ipython_display_()
+        
     def clear(self):
         # not sure it really works...
         if self.del_request is not None:
             requests.delete(self.del_request)
+
+
+class Segmentation(Classification):
+    
+    @Classification.output.capture(clear_output=True)
+    def update_train_file_list(self, *args):
+        # print (Path(self.training_repo.value).read_text().split('\n'))
+        self.file_dict = {
+            Path(x.split()[0]): Path(x.split()[1])
+            for x in Path(self.training_repo.value).read_text().split("\n")
+            if len(x.split()) >= 2
+        }
+
+        self.file_list.options = [
+            fh.as_posix()
+            for fh in sample_from_iterable(self.file_dict.keys(), 10)
+        ]
+        
+    @Classification.output.capture(clear_output=True)
+    def update_test_file_list(self, *args):
+        # print (Path(self.training_repo.value).read_text().split('\n'))
+        self.file_dict = {
+            Path(x.split()[0]): Path(x.split()[1])
+            for x in Path(self.testing_repo.value).read_text().split("\n")
+            if len(x.split()) >= 2
+        }
+
+        self.file_list.options = [
+            fh.as_posix()
+            for fh in sample_from_iterable(self.file_dict.keys(), 10)
+        ]
+
+    def __init__(
+        self,
+        sname: str,
+        *args,  # unnamed parameters are forbidden
+        training_repo: Path = None,
+        testing_repo: Path = None,
+        host: str = "localhost",
+        port: int = 1234,
+        nclasses: int = -1,
+        model_repo: Optional[str] = None,
+        img_width: Optional[int] = None,
+        img_height: Optional[int] = None,
+        base_lr: float = 1e-3,
+        iterations: int = 10000,
+        snapshot_interval: int = 5000,
+        test_interval: int = 1000,
+        gpuid: int = 0,
+        layers: List[str] = [],
+        template: Optional[str] = None,
+        mirror: bool = True,
+        rotate: bool = True,
+        tsplit: float = 0.0,
+        finetune: bool = False,
+        resume: bool = False,
+        bw: bool = False,
+        crop_size: int = -1,
+        batch_size: int = 32,
+        test_batch_size: int = 16,
+        iter_size: int = 1,
+        solver_type: str = "SGD",
+        noise_prob: float = 0.0,
+        distort_prob: float = 0.0,
+        test_init: bool = False,
+        class_weights: List[float] = [],
+        weights: Path = None,
+        model_postfix: str = "",
+        tboard: Optional[Path] = None,
+        ignore_label: int = -1,
+        multi_label: bool = False,
+        regression: bool = False,
+        rand_skip: int = 0,
+        ctc: bool = False,
+        timesteps: int = 32,
+        unchanged_data: bool = False,
+    ) -> None:
+
+        self.del_request = None
+
+        elts = {
+            k: v
+            for k, v in get_type_hints(self.__init__).items()
+            if k != "return"
+        }
+
+        self._widgets = []
+
+        self.run_button = Button(description="Run")
+        self._widgets.append(self.run_button)
+
+        for elt, type_hint in elts.items():
+            self._add_widget(elt, eval(elt), type_hint)
+
+        self._configuration = VBox(self._widgets)
+
+        self.train_labels = Button(
+            description=Path(self.training_repo.value).name
+        )
+        self.test_labels = Button(
+            description=Path(self.testing_repo.value).name
+        )
+
+        self.file_list = SelectMultiple(
+            options=[],
+            value=[],
+            rows=10,
+            description="File list",
+            layout=Layout(width="95%", height="200px"),
+        )
+
+        # self.testing_repo.observe(self.update_test_button, names="value")
+        # self.training_repo.observe(self.update_train_button, names="value")
+
+        self.train_labels.on_click(self.update_train_file_list)
+        self.test_labels.on_click(self.update_test_file_list)
+
+        self.file_list.observe(self.display_img, names="value")
+
+        self._img_explorer = VBox(
+            [
+                HBox([HBox([self.train_labels, self.test_labels])]),
+                self.file_list,
+                self.output,
+            ]
+        )
+
+        self._main_elt = HBox(
+            [self._configuration, self._img_explorer],
+            layout=Layout(width="100%"),
+        )
+
+        self.run_button.on_click(self.run)
+        self.update_label_list(())
+
+    
+    @Classification.output.capture(clear_output=True)
+    def display_img(self, args):
+        for path in args["new"]:
+            shape, img = img_handle(Path(path))
+            if self.img_width.value == "":
+                self.img_width.value = str(shape[0])
+            if self.img_height.value == "":
+                self.img_height.value = str(shape[1])
+            display(
+                img
+            )  # TODO display next to each other with shape info as well
+            _, img = img_handle(Path(path), self.file_dict[Path(path)])
+            display(img)
+            # display(Image(path))
+            # integrate THIS : https://github.com/alx/react-bounding-box
+            # (cv2.imread(self.file_dict[Path(path)].as_posix()))
+
+    @Classification.output.capture(clear_output=True)
+    def run(self, *_) -> None:
+        
+        logging.info("Running segmentation run")
+        
+        width = int(self.img_width.value)
+        height = int(self.img_height.value)
+        crop_size = int(self.crop_size.value)
+
+        nclasses = int(self.nclasses.value)
+        if nclasses == -1:
+            import os
+            logging.info("walking training repo")
+            nclasses = len(os.walk(self.training_repo.value).next()[1])
+            
+        logging.info("{} classes".format(nclasses))
+        host = self.host.value
+        port = self.port.value
+        description = "imagenet classifier"
+        mllib = "caffe"
+
+        model = {
+            "templates": "../templates/caffe/",
+            "repository": self.model_repo.value,
+            "create_repository": True,
+        }
+
+        if self.weights.value:
+            if not Path(self.model_repo.value).is_dir():
+                logging.warn(f"Creating repository directory: {self.model_repo.value}")
+                Path(self.model_repo.value).mkdir(parents=True)
+                # change permission if dede is not run by current user
+                Path(self.model_repo.value).chmod(0o777)
+            import shutil
+
+            shutil.copy(self.weights.value, self.model_repo.value + "/")
+            
+        parameters_input = {
+            "connector": "image",
+            "width": width,
+            "height": height,
+            "bw": self.bw.value,
+            "db": True,
+            "segmentation": True,
+        }
+        
+        if self.multi_label.value:
+            parameters_input["multi_label"] = True
+            parameters_input["db"] = False
+        if self.ctc.value:
+            parameters_input["ctc"] = True
+            
+        logging.info("Parameters input: {}".format(parameters_input))
+            
+        if not self.finetune.value:
+            if self.template.value:
+                parameters_mllib = {
+                    "template": self.template.value,
+                    "nclasses": nclasses,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                    "layers": eval(self.layers.value),  # list of strings
+                    "db": True,
+                }
+            else:
+                parameters_mllib = {
+                    "nclasses": nclasses,
+                    "mirror": self.mirror.value,
+                    "rotate": self.rotate.value,
+                }
+        else:
+            if self.template.value:
+                parameters_mllib = {
+                    "template": self.template.value,
+                    "finetuning": True,
+                    "nclasses": nclasses,
+                    "weights": weights,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                }
+            else:
+                parameters_mllib = {
+                    "finetuning": True,
+                    "nclasses": nclasses,
+                    "weights": weights,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                }
+        if self.multi_label.value:
+            parameters_mllib["db"] = False
+
+        if crop_size > 0:
+            parameters_mllib["crop_size"] = crop_size
+        if self.noise_prob.value > 0.0:
+            parameters_mllib["noise"] = {
+                "all_effects": True,
+                "prob": self.noise_prob.value,
+            }
+        if self.distort_prob.value > 0.0:
+            parameters_mllib["distort"] = {
+                "all_effects": True,
+                "prob": self.distort_prob.value,
+            }
+        parameters_mllib["gpu"] = True
+        parameters_mllib["gpuid"] = self.gpuid.value
+        if self.regression.value:
+            parameters_mllib["regression"] = True
+
+        logging.info("Parameters mllib: {}".format(parameters_input))
+
+        parameters_output = {}
+        # print (parameters_input)
+        # print (parameters_mllib)
+        # pserv = dd.put_service(self.sname.value,model,description,mllib,
+        #                       parameters_input,parameters_mllib,parameters_output)
+
+        body = {
+            "description": description,
+            "mllib": mllib,
+            "type": "supervised",
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "model": model,
+        }
+
+        logging.info(f"Sending request http://{host}:{port}/services/{self.sname.value}")
+        c = requests.get(f"http://{host}:{port}/services/{self.sname.value}")
+        logging.info(f"Current state of service '{self.sname.value}':\n  {c.json()}")
+        # useful for the clear() method
+        self.del_request = (
+            f"http://{host}:{port}/services/{self.sname.value}?clear=full"
+        )
+        if c.json()["status"]["msg"] != "NotFound":
+            self.del_request = (
+                f"http://{host}:{port}/services/{self.sname.value}?clear=full"
+            )
+            c = requests.delete(self.del_request)
+            logging.warn(f"Since service '{self.sname.value}' was still there, it has been fully cleared:\n"
+                         f"  {c.json()}")
+
+        logging.info(f"Creating service '{self.sname.value}':\n  {body}")
+        c = requests.put(
+            f"http://{host}:{port}/services/{self.sname.value}",
+            json.dumps(body),
+        )
+        logging.info(f"Reply from creating service '{self.sname.value}':\n  {c.json()}")
+
+        train_data = [self.training_repo.value]
+        parameters_input = {
+            "test_split": self.tsplit.value,
+            "shuffle": True,
+            "db": True,
+            "segmentation": True
+        }
+        if self.testing_repo.value != "":
+            train_data.append(self.testing_repo.value)
+            parameters_input = {"shuffle": True}
+
+        if self.multi_label.value:
+            parameters_input["db"] = False
+        parameters_mllib = {
+            "gpu": True,
+            "gpuid": self.gpuid.value,
+            "resume": self.resume.value,
+            "net": {
+                "batch_size": self.batch_size.value,
+                "test_batch_size": self.test_batch_size.value,
+            },
+            "solver": {
+                "test_initialization": self.test_init.value,
+                "iterations": self.iterations.value,
+                "test_interval": self.test_interval.value,
+                "snapshot": self.snapshot_interval.value,
+                "base_lr": self.base_lr.value,
+                "solver_type": self.solver_type.value,
+                "iter_size": self.iter_size.value,
+            },
+        }
+        ##TODO: lr policy as arguments
+        # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
+        if self.rand_skip.value > 0 and self.resume.value:
+            parameters_mllib["solver"]["rand_skip"] = self.rand_skip.value
+        if self.class_weights.value:
+            parameters_mllib["class_weights"] = eval(self.class_weights.value)
+        if self.ignore_label.value >= 0:
+            parameters_mllib["ignore_label"] = self.ignore_label.value
+        if self.timesteps.value:
+            parameters_mllib["timesteps"] = self.timesteps.value
+
+        parameters_output = {"measure": ["acc"]}
+
+
+        body = {
+            "service": self.sname.value,
+            "async": True,
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "data": train_data,
+        }
+
+        logging.info(f"Start training phase:\n {body}")
+        c = requests.post(f"http://{host}:{port}/train", json.dumps(body))
+        logging.info(f"Reply from training service '{self.sname.value}':\n  {c.json()}")
+                     
+
