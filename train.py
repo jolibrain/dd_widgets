@@ -140,7 +140,6 @@ class Classification(object):
         *args,  # unnamed parameters are forbidden
         training_repo: Path = None,
         testing_repo: Path = None,
-        test_split: float = 0,
         host: str = "localhost",
         port: int = 1234,
         nclasses: int = -1,
@@ -187,12 +186,17 @@ class Classification(object):
         }
 
         self._widgets = []
+        
+        self.run_button = Button(description="Run")
+        self.info_button = Button(description="Info")
+        self.clear_button = Button(description="Clear")
+        
+        self._widgets.append(self.run_button)
+        self._widgets.append(self.info_button)
+        self._widgets.append(self.clear_button)
 
         for elt, type_hint in elts.items():
             self._add_widget(elt, eval(elt), type_hint)
-
-        self.run_button = Button(description="Run")
-        self._widgets.append(self.run_button)
 
         self._configuration = VBox(self._widgets)
 
@@ -233,6 +237,8 @@ class Classification(object):
         )
 
         self.run_button.on_click(self.run)
+        self.info_button.on_click(self.info)
+        self.clear_button.on_click(self.clear)
         self.update_label_list(())
 
     @output.capture(clear_output=True)
@@ -450,14 +456,24 @@ class Classification(object):
         logging.info(f"Start training phase:\n {body}")
         c = requests.post(f"http://{host}:{port}/train", json.dumps(body))
         logging.info(f"Reply from training service '{self.sname.value}':\n  {c.json()}")
+        
+        print(c.json())
 
     def _ipython_display_(self):
         self._main_elt._ipython_display_()
         
-    def clear(self):
+    @output.capture(clear_output=True)
+    def clear(self, *_):
         # not sure it really works...
         if self.del_request is not None:
-            requests.delete(self.del_request)
+            c = requests.delete(self.del_request)
+            print(c.json())
+            
+    @output.capture(clear_output=True)
+    def info(self, *_):
+        # TODO job number
+        c = requests.get(f"http://{self.host.value}:{self.port.value}/train?service={self.sname.value}&job=1&timeout=10")
+        print (c.json())
 
 
 class Segmentation(Classification):
@@ -547,7 +563,12 @@ class Segmentation(Classification):
         self._widgets = []
 
         self.run_button = Button(description="Run")
+        self.info_button = Button(description="Info")
+        self.clear_button = Button(description="Clear")
+        
         self._widgets.append(self.run_button)
+        self._widgets.append(self.info_button)
+        self._widgets.append(self.clear_button)
 
         for elt, type_hint in elts.items():
             self._add_widget(elt, eval(elt), type_hint)
@@ -591,6 +612,9 @@ class Segmentation(Classification):
         )
 
         self.run_button.on_click(self.run)
+        self.info_button.on_click(self.info)
+        self.clear_button.on_click(self.clear)
+        
         self.update_label_list(())
 
     
@@ -820,5 +844,5 @@ class Segmentation(Classification):
         logging.info(f"Start training phase:\n {body}")
         c = requests.post(f"http://{host}:{port}/train", json.dumps(body))
         logging.info(f"Reply from training service '{self.sname.value}':\n  {c.json()}")
-                     
+        print(c.json())
 
