@@ -55,7 +55,7 @@ def img_handle(
     fig, ax = plt.subplots()
     ax.imshow(data)
     if segmentation is not None:
-        data = cv2.imread(path2.as_posix(), cv2.IMREAD_UNCHANGED)
+        data = cv2.imread(segmentation.as_posix(), cv2.IMREAD_UNCHANGED)
         ax.imshow(data, alpha=.2)
     if bbox is not None:
         with bbox.open('r') as fh:
