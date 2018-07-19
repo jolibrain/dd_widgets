@@ -17,9 +17,14 @@ from IPython.display import Image, display
 import cv2
 import requests
 from ipywidgets import (Button, Checkbox, FloatText, HBox, IntText, Layout,
-                        Output, SelectMultiple, Text, VBox, Widget)
+                        Output, SelectMultiple, Text, VBox, Widget, HTML)
 
 # fmt: on
+
+# -- Logging --
+
+# This should not stay here in the long run
+# It's just a convenient way to debug when messages cannot always be printed
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -32,11 +37,12 @@ logging.basicConfig(
     format=fmt,
     datefmt="%m-%d %H:%M:%S",
     filename="widgets.log",
-    filemode="w",
+    filemode="a",
 )
 
 logging.info("Creating widgets.log file")
 
+# -- Basic tools --
 
 def img_handle(
     path: Path, path2: Optional[Path] = None
@@ -60,6 +66,8 @@ def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
 
 
+# -- Core 'abstract' widget for many tasks
+
 class MLWidget(object):
 
     _fields: Dict[str, str] = {
@@ -70,11 +78,96 @@ class MLWidget(object):
 
     _widget_type = {int: IntText, float: FloatText, bool: Checkbox}
 
-    output: Output = Output()
+    output: Output = Output(layout=Layout(max_width='650px'))
+    host: Text
+    port: Text
+        
+    def __init__(self, sname: str, params: Dict[str, Tuple[Any, type]], *args):
+        self.sname = sname
+        
+        self.run_button = Button(description="Run")
+        self.info_button = Button(description="Info")
+        self.clear_button = Button(description="Clear")
+        
+        self._widgets: List[Widget] = [
+            HTML(value="<h2>{task} task: {sname}</h2>".format(
+                task=self.__class__.__name__,
+                sname=self.sname
+            )
+                ),
+            self.run_button,
+            self.info_button,
+            self.clear_button
+        ]
 
+        self.run_button.on_click(self.run)
+        self.info_button.on_click(self.info)
+        self.clear_button.on_click(self.clear)
+        
+        for name, (value, type_hint) in params.items():
+            self._add_widget(name, value, type_hint)
 
-class Classification(MLWidget):
-    @MLWidget.output.capture(clear_output=True)
+        self._configuration = VBox(self._widgets,
+                                   layout=Layout(min_width='250px'))
+
+    def _add_widget(self, name, value, type_hint):
+
+        widget_type = self._widget_type.get(type_hint, None)
+
+        if widget_type is None:
+            setattr(
+                self,
+                name,
+                Text(  # Widget type by default then convert to str
+                    value="" if value is None else str(value),
+                    description=self._fields.get(name, name),
+                ),
+            )
+        else:
+            setattr(
+                self,
+                name,
+                widget_type(
+                    value=type_hint() if value is None else type_hint(value),
+                    description=self._fields.get(name, name),
+                ),
+            )
+
+        self._widgets.append(getattr(self, name))
+        
+    def _ipython_display_(self):
+        self._main_elt._ipython_display_()
+
+    @output.capture(clear_output=True)
+    def clear(self, *_):
+        request = "http://{host}:{port}/services/{sname}?clear=full".format(
+            host=self.host.value, port=self.port.value, sname=self.sname
+        )
+        c = requests.delete(request)
+        logging.info("Clearing (full) service {sname}: {json}".format(
+            sname=self.sname,
+            json=json.dumps(c.json(), indent=2)
+        ))
+        print(json.dumps(c.json(), indent=2))
+
+    @output.capture(clear_output=True)
+    def info(self, *_):
+        # TODO job number
+        request = (
+            "http://{host}:{port}/train?service={sname}&job=1&timeout=10".format(
+                host=self.host.value,
+                port=self.port.value,
+                sname=self.sname,
+            )
+        )
+        c = requests.get(request)
+        logging.info("Getting info for service {sname}: {json}".format(
+            sname=self.sname,
+            json=json.dumps(c.json(), indent=2)
+        ))
+        print(json.dumps(c.json(), indent=2))
+    
+    @output.capture(clear_output=True)
     def update_label_list(self, _):
         if self.training_repo.value != "":
             self.train_labels.options = tuple(
@@ -89,6 +182,11 @@ class Classification(MLWidget):
         self.test_labels.rows = min(10, len(self.test_labels.options))
         if self.nclasses.value == -1:
             self.nclasses.value = str(len(self.train_labels.options))
+
+
+
+class Classification(MLWidget):
+
 
     @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
@@ -123,31 +221,6 @@ class Classification(MLWidget):
             display(
                 img
             )  # TODO display next to each other with shape info as well
-
-    def _add_widget(self, name, value, type_hint):
-
-        widget_type = self._widget_type.get(type_hint, None)
-
-        if widget_type is None:
-            setattr(
-                self,
-                name,
-                Text(
-                    value="" if value is None else str(value),
-                    description=self._fields.get(name, name),
-                ),
-            )
-        else:
-            setattr(
-                self,
-                name,
-                widget_type(
-                    value=type_hint() if value is None else type_hint(value),
-                    description=self._fields.get(name, name),
-                ),
-            )
-
-        self._widgets.append(getattr(self, name))
 
     def __init__(
         self,
@@ -194,26 +267,15 @@ class Classification(MLWidget):
         unchanged_data: bool = False,
     ) -> None:
 
-        elts = {
-            k: v
-            for k, v in get_type_hints(self.__init__).items()  # type: ignore
-            if k != "return"
+        local_vars = locals()
+        params = {
+            # no access to eval(k) inside the comprehension
+            k: (eval(k, local_vars), v)
+            for k, v in get_type_hints(self.__init__).items()
+            if k not in ["return", "sname"]
         }
-
-        self._widgets: List[Widget] = []
-
-        self.run_button = Button(description="Run")
-        self.info_button = Button(description="Info")
-        self.clear_button = Button(description="Clear")
-
-        self._widgets.append(self.run_button)
-        self._widgets.append(self.info_button)
-        self._widgets.append(self.clear_button)
-
-        for elt, type_hint in elts.items():
-            self._add_widget(elt, eval(elt), type_hint)
-
-        self._configuration = VBox(self._widgets)
+        
+        super().__init__(sname, params)
 
         self.train_labels = SelectMultiple(
             options=[], value=[], description="Training labels", disabled=False
@@ -228,7 +290,7 @@ class Classification(MLWidget):
             value=[],
             rows=10,
             description="File list",
-            layout=Layout(width="95%", height="200px"),
+            layout=Layout(height="200px"),
         )
 
         self.testing_repo.observe(self.update_label_list, names="value")
@@ -243,17 +305,16 @@ class Classification(MLWidget):
                 HBox([HBox([self.train_labels, self.test_labels])]),
                 self.file_list,
                 self.output,
-            ]
+            ],
+            layout=Layout(width="650px")
         )
 
         self._main_elt = HBox(
             [self._configuration, self._img_explorer],
-            layout=Layout(width="100%"),
+            layout=Layout(width="900px"),
         )
 
-        self.run_button.on_click(self.run)
-        self.info_button.on_click(self.info)
-        self.clear_button.on_click(self.clear)
+        
         self.update_label_list(())
 
     @MLWidget.output.capture(clear_output=True)
@@ -377,12 +438,12 @@ class Classification(MLWidget):
 
         c = requests.get(
             "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname.value
+                host=host, port=port, sname=self.sname
             )
         )
         logging.info(
-            "Current state of service '{sname}':\n  {c.json()}".format(
-                sname=self.sname.value, json=c.json()
+            "Current state of service '{sname}':\n  {json}".format(
+                sname=self.sname, json=c.json()
             )
         )
         # useful for the clear() method
@@ -392,23 +453,23 @@ class Classification(MLWidget):
                 (
                     "Since service '{sname}' was still there, "
                     "it has been fully cleared: {json}"
-                ).format(sname=self.sname.value, json=c.json())
+                ).format(sname=self.sname, json=c.json())
             )
 
         logging.info(
             "Creating service '{sname}':\n {body}".format(
-                sname=self.sname.value, body=body
+                sname=self.sname, body=body
             )
         )
         c = requests.put(
             "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname.value
+                host=host, port=port, sname=self.sname
             ),
             json.dumps(body),
         )
         logging.info(
             "Reply from creating service '{sname}': {json}".format(
-                sname=self.sname.value, json=c.json()
+                sname=self.sname, json=c.json()
             )
         )
 
@@ -472,7 +533,7 @@ class Classification(MLWidget):
             parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
 
         body = {
-            "service": self.sname.value,
+            "service": self.sname,
             "async": True,
             "parameters": {
                 "input": parameters_input,
@@ -489,38 +550,16 @@ class Classification(MLWidget):
         )
         logging.info(
             "Reply from training service '{sname}': {json}".format(
-                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
             )
         )
 
         print(json.dumps(c.json(), indent=2))
 
-    def _ipython_display_(self):
-        self._main_elt._ipython_display_()
-
-    @MLWidget.output.capture(clear_output=True)
-    def clear(self, *_):
-        request = "http://{host}:{port}/services/{sname}?clear=full".format(
-            host=self.host.value, port=self.port.value, sname=self.sname.value
-        )
-        c = requests.delete(request)
-        print(json.dumps(c.json(), indent=2))
-
-    @MLWidget.output.capture(clear_output=True)
-    def info(self, *_):
-        # TODO job number
-        c = requests.get(
-            "http://{host}:{port}/train?service={sname}&"
-            "job=1&timeout=10".format(
-                host=self.host.value,
-                port=self.port.value,
-                sname=self.sname.value,
-            )
-        )
-        print(json.dumps(c.json(), indent=2))
 
 
-class Segmentation(Classification):
+
+class Segmentation(MLWidget):
     @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
         # print (Path(self.training_repo.value).read_text().split('\n'))
@@ -594,27 +633,17 @@ class Segmentation(Classification):
         timesteps: int = 32,
         unchanged_data: bool = False,
     ) -> None:
+        
 
-        elts = {
-            k: v
+        local_vars = locals()
+        params = {
+            # no access to eval(k) inside the comprehension
+            k: (eval(k, local_vars), v)
             for k, v in get_type_hints(self.__init__).items()
-            if k != "return"
+            if k not in ["return", "sname"]
         }
-
-        self._widgets = []
-
-        self.run_button = Button(description="Run")
-        self.info_button = Button(description="Info")
-        self.clear_button = Button(description="Clear")
-
-        self._widgets.append(self.run_button)
-        self._widgets.append(self.info_button)
-        self._widgets.append(self.clear_button)
-
-        for elt, type_hint in elts.items():
-            self._add_widget(elt, eval(elt), type_hint)
-
-        self._configuration = VBox(self._widgets)
+        
+        super().__init__(sname, params)
 
         self.train_labels = Button(
             description=Path(self.training_repo.value).name
@@ -628,7 +657,7 @@ class Segmentation(Classification):
             value=[],
             rows=10,
             description="File list",
-            layout=Layout(width="95%", height="200px"),
+            layout=Layout(height="200px", width="auto"),
         )
 
         # self.testing_repo.observe(self.update_test_button, names="value")
@@ -644,17 +673,15 @@ class Segmentation(Classification):
                 HBox([HBox([self.train_labels, self.test_labels])]),
                 self.file_list,
                 self.output,
-            ]
+            ],
+            layout=Layout(width="650px")
         )
 
         self._main_elt = HBox(
             [self._configuration, self._img_explorer],
-            layout=Layout(width="100%"),
+            layout=Layout(width="900px"),
         )
 
-        self.run_button.on_click(self.run)
-        self.info_button.on_click(self.info)
-        self.clear_button.on_click(self.clear)
 
         self.update_label_list(())
 
@@ -809,17 +836,17 @@ class Segmentation(Classification):
 
         logging.info(
             "Sending request http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname.value
+                host=host, port=port, sname=self.sname
             )
         )
         c = requests.get(
             "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname.value
+                host=host, port=port, sname=self.sname
             )
         )
         logging.info(
             "Current state of service '{sname}': {json}".format(
-                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
             )
         )
         if c.json()["status"]["msg"] != "NotFound":
@@ -829,24 +856,24 @@ class Segmentation(Classification):
                     "Since service '{sname}' was still there, "
                     "it has been fully cleared: {json}"
                 ).format(
-                    sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
                 )
             )
 
         logging.info(
             "Creating service '{sname}': {body}".format(
-                sname=self.sname.value, body=json.dumps(body, indent=2)
+                sname=self.sname, body=json.dumps(body, indent=2)
             )
         )
         c = requests.put(
             "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname.value
+                host=host, port=port, sname=self.sname
             ),
             json.dumps(body),
         )
         logging.info(
             "Reply from creating service '{sname}':\n  {json}".format(
-                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
             )
         )
 
@@ -895,7 +922,7 @@ class Segmentation(Classification):
         parameters_output = {"measure": ["acc"]}
 
         body: Dict[str, Any] = {
-            "service": self.sname.value,
+            "service": self.sname,
             "async": True,
             "parameters": {
                 "input": parameters_input,
@@ -916,7 +943,7 @@ class Segmentation(Classification):
         )
         logging.info(
             "Reply from training service '{sname}': {json}".format(
-                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
             )
         )
 
