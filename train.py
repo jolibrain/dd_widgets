@@ -1,28 +1,41 @@
+# fmt: off
+
 import json
 import logging
+import os
 import random
+import shutil
 from heapq import nlargest
 from pathlib import Path
 from tempfile import mkstemp
-from typing import Iterator, List, Optional, Tuple, TypeVar, get_type_hints
+from typing import (Any, Dict, Iterator, List, Optional, Tuple, TypeVar,
+                    get_type_hints)
 
 import matplotlib.pyplot as plt
 from IPython.display import Image, display
 
 import cv2
 import requests
-from ipywidgets import (
-    Button,
-    Checkbox,
-    FloatText,
-    HBox,
-    IntText,
-    Layout,
-    Output,
-    SelectMultiple,
-    Text,
-    VBox,
+from ipywidgets import (Button, Checkbox, FloatText, HBox, IntText, Layout,
+                        Output, SelectMultiple, Text, VBox, Widget)
+
+# fmt: on
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+fmt = "%(asctime)s:%(msecs)d - %(levelname)s"
+fmt += " - {%(filename)s:%(lineno)d} %(message)s"
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format=fmt,
+    datefmt="%m-%d %H:%M:%S",
+    filename="widgets.log",
+    filemode="w",
 )
+
+logging.info("Creating widgets.log file")
 
 
 def img_handle(
@@ -47,9 +60,9 @@ def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
 
 
-class Classification(object):
+class MLWidget(object):
 
-    _fields = {
+    _fields: Dict[str, str] = {
         "sname": "Model name",
         "training_repo": "Training directory",
         "testing_repo": "Testing directory",
@@ -57,9 +70,11 @@ class Classification(object):
 
     _widget_type = {int: IntText, float: FloatText, bool: Checkbox}
 
-    output = Output()
+    output: Output = Output()
 
-    @output.capture(clear_output=True)
+
+class Classification(MLWidget):
+    @MLWidget.output.capture(clear_output=True)
     def update_label_list(self, _):
         if self.training_repo.value != "":
             self.train_labels.options = tuple(
@@ -75,7 +90,7 @@ class Classification(object):
         if self.nclasses.value == -1:
             self.nclasses.value = str(len(self.train_labels.options))
 
-    @output.capture(clear_output=True)
+    @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
         if len(self.train_labels.value) == 0:
             return
@@ -86,7 +101,7 @@ class Classification(object):
         ]
         self.test_labels.value = []
 
-    @output.capture(clear_output=True)
+    @MLWidget.output.capture(clear_output=True)
     def update_test_file_list(self, *args):
         if len(self.test_labels.value) == 0:
             return
@@ -97,7 +112,7 @@ class Classification(object):
         ]
         self.train_labels.value = []
 
-    @output.capture(clear_output=True)
+    @MLWidget.output.capture(clear_output=True)
     def display_img(self, args):
         for path in args["new"]:
             shape, img = img_handle(Path(path))
@@ -181,16 +196,16 @@ class Classification(object):
 
         elts = {
             k: v
-            for k, v in get_type_hints(self.__init__).items()
+            for k, v in get_type_hints(self.__init__).items()  # type: ignore
             if k != "return"
         }
 
-        self._widgets = []
-        
+        self._widgets: List[Widget] = []
+
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
-        
+
         self._widgets.append(self.run_button)
         self._widgets.append(self.info_button)
         self._widgets.append(self.clear_button)
@@ -241,7 +256,7 @@ class Classification(object):
         self.clear_button.on_click(self.clear)
         self.update_label_list(())
 
-    @output.capture(clear_output=True)
+    @MLWidget.output.capture(clear_output=True)
     def run(self, *_) -> None:
         width = int(self.img_width.value)
         height = int(self.img_height.value)
@@ -249,9 +264,8 @@ class Classification(object):
 
         nclasses = int(self.nclasses.value)
         if nclasses == -1:
-            import os
-
             nclasses = len(os.walk(self.training_repo.value).next()[1])
+
         host = self.host.value
         port = self.port.value
         description = "imagenet classifier"
@@ -265,13 +279,17 @@ class Classification(object):
 
         if self.weights.value:
             if not Path(self.model_repo.value).is_dir():
-                logging.warn(f"Creating repository directory: {self.model_repo.value}")
+                logging.warn(
+                    "Creating repository directory: {}".format(
+                        self.model_repo.value
+                    )
+                )
                 Path(self.model_repo.value).mkdir(parents=True)
                 # change permission if dede is not run by current user
                 Path(self.model_repo.value).chmod(0o777)
-            import shutil
 
             shutil.copy(self.weights.value, self.model_repo.value + "/")
+
         parameters_input = {
             "connector": "image",
             "width": width,
@@ -279,7 +297,7 @@ class Classification(object):
             "bw": self.bw.value,
             "db": True,
         }
-        
+
         if self.multi_label.value:
             parameters_input["multi_label"] = True
             parameters_input["db"] = False
@@ -345,7 +363,7 @@ class Classification(object):
         # pserv = dd.put_service(self.sname.value,model,description,mllib,
         #                       parameters_input,parameters_mllib,parameters_output)
 
-        body = {
+        body: Dict[str, Any] = {
             "description": description,
             "mllib": mllib,
             "type": "supervised",
@@ -357,26 +375,42 @@ class Classification(object):
             "model": model,
         }
 
-        c = requests.get(f"http://{host}:{port}/services/{self.sname.value}")
-        logging.info(f"Current state of service '{self.sname.value}':\n  {c.json()}")
-        # useful for the clear() method
-        self.del_request = (
-            f"http://{host}:{port}/services/{self.sname.value}?clear=full"
-        )
-        if c.json()["status"]["msg"] != "NotFound":
-            self.del_request = (
-                f"http://{host}:{port}/services/{self.sname.value}?clear=full"
+        c = requests.get(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname.value
             )
-            c = requests.delete(self.del_request)
-            logging.warn(f"Since service '{self.sname.value}' was still there, it has been fully cleared:\n"
-                         f"  {c.json()}")
+        )
+        logging.info(
+            "Current state of service '{sname}':\n  {c.json()}".format(
+                sname=self.sname.value, json=c.json()
+            )
+        )
+        # useful for the clear() method
+        if c.json()["status"]["msg"] != "NotFound":
+            self.clear()
+            logging.warn(
+                (
+                    "Since service '{sname}' was still there, "
+                    "it has been fully cleared: {json}"
+                ).format(sname=self.sname.value, json=c.json())
+            )
 
-        logging.info(f"Creating service '{self.sname.value}':\n  {body}")
+        logging.info(
+            "Creating service '{sname}':\n {body}".format(
+                sname=self.sname.value, body=body
+            )
+        )
         c = requests.put(
-            f"http://{host}:{port}/services/{self.sname.value}",
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname.value
+            ),
             json.dumps(body),
         )
-        logging.info(f"Reply from creating service '{self.sname.value}':\n  {c.json()}")
+        logging.info(
+            "Reply from creating service '{sname}': {json}".format(
+                sname=self.sname.value, json=c.json()
+            )
+        )
 
         train_data = [self.training_repo.value]
         parameters_input = {
@@ -437,11 +471,6 @@ class Classification(object):
         else:
             parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
 
-        # print(train_data)
-        # print(parameters_input)
-        # print(parameters_mllib)
-        # print(parameters_output)
-
         body = {
             "service": self.sname.value,
             "async": True,
@@ -453,32 +482,46 @@ class Classification(object):
             "data": train_data,
         }
 
-        logging.info(f"Start training phase:\n {body}")
-        c = requests.post(f"http://{host}:{port}/train", json.dumps(body))
-        logging.info(f"Reply from training service '{self.sname.value}':\n  {c.json()}")
-        
-        print(c.json())
+        logging.info("Start training phase: {body}".format(body=body))
+        c = requests.post(
+            "http://{host}:{port}/train".format(host=host, port=port),
+            json.dumps(body),
+        )
+        logging.info(
+            "Reply from training service '{sname}': {json}".format(
+                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+            )
+        )
+
+        print(json.dumps(c.json(), indent=2))
 
     def _ipython_display_(self):
         self._main_elt._ipython_display_()
-        
-    @output.capture(clear_output=True)
+
+    @MLWidget.output.capture(clear_output=True)
     def clear(self, *_):
-        # not sure it really works...
-        if self.del_request is not None:
-            c = requests.delete(self.del_request)
-            print(c.json())
-            
-    @output.capture(clear_output=True)
+        request = "http://{host}:{port}/services/{sname}?clear=full".format(
+            host=self.host.value, port=self.port.value, sname=self.sname.value
+        )
+        c = requests.delete(request)
+        print(json.dumps(c.json(), indent=2))
+
+    @MLWidget.output.capture(clear_output=True)
     def info(self, *_):
         # TODO job number
-        c = requests.get(f"http://{self.host.value}:{self.port.value}/train?service={self.sname.value}&job=1&timeout=10")
-        print (c.json())
+        c = requests.get(
+            "http://{host}:{port}/train?service={sname}&"
+            "job=1&timeout=10".format(
+                host=self.host.value,
+                port=self.port.value,
+                sname=self.sname.value,
+            )
+        )
+        print(json.dumps(c.json(), indent=2))
 
 
 class Segmentation(Classification):
-    
-    @Classification.output.capture(clear_output=True)
+    @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
         # print (Path(self.training_repo.value).read_text().split('\n'))
         self.file_dict = {
@@ -491,8 +534,8 @@ class Segmentation(Classification):
             fh.as_posix()
             for fh in sample_from_iterable(self.file_dict.keys(), 10)
         ]
-        
-    @Classification.output.capture(clear_output=True)
+
+    @MLWidget.output.capture(clear_output=True)
     def update_test_file_list(self, *args):
         # print (Path(self.training_repo.value).read_text().split('\n'))
         self.file_dict = {
@@ -552,8 +595,6 @@ class Segmentation(Classification):
         unchanged_data: bool = False,
     ) -> None:
 
-        self.del_request = None
-
         elts = {
             k: v
             for k, v in get_type_hints(self.__init__).items()
@@ -565,7 +606,7 @@ class Segmentation(Classification):
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
-        
+
         self._widgets.append(self.run_button)
         self._widgets.append(self.info_button)
         self._widgets.append(self.clear_button)
@@ -614,11 +655,10 @@ class Segmentation(Classification):
         self.run_button.on_click(self.run)
         self.info_button.on_click(self.info)
         self.clear_button.on_click(self.clear)
-        
+
         self.update_label_list(())
 
-    
-    @Classification.output.capture(clear_output=True)
+    @MLWidget.output.capture(clear_output=True)
     def display_img(self, args):
         for path in args["new"]:
             shape, img = img_handle(Path(path))
@@ -635,11 +675,11 @@ class Segmentation(Classification):
             # integrate THIS : https://github.com/alx/react-bounding-box
             # (cv2.imread(self.file_dict[Path(path)].as_posix()))
 
-    @Classification.output.capture(clear_output=True)
+    @MLWidget.output.capture(clear_output=True)
     def run(self, *_) -> None:
-        
+
         logging.info("Running segmentation run")
-        
+
         width = int(self.img_width.value)
         height = int(self.img_height.value)
         crop_size = int(self.crop_size.value)
@@ -647,9 +687,10 @@ class Segmentation(Classification):
         nclasses = int(self.nclasses.value)
         if nclasses == -1:
             import os
+
             logging.info("walking training repo")
             nclasses = len(os.walk(self.training_repo.value).next()[1])
-            
+
         logging.info("{} classes".format(nclasses))
         host = self.host.value
         port = self.port.value
@@ -664,14 +705,17 @@ class Segmentation(Classification):
 
         if self.weights.value:
             if not Path(self.model_repo.value).is_dir():
-                logging.warn(f"Creating repository directory: {self.model_repo.value}")
+                logging.warn(
+                    "Creating repository directory: {}".format(
+                        self.model_repo.value
+                    )
+                )
                 Path(self.model_repo.value).mkdir(parents=True)
                 # change permission if dede is not run by current user
                 Path(self.model_repo.value).chmod(0o777)
-            import shutil
 
             shutil.copy(self.weights.value, self.model_repo.value + "/")
-            
+
         parameters_input = {
             "connector": "image",
             "width": width,
@@ -680,15 +724,15 @@ class Segmentation(Classification):
             "db": True,
             "segmentation": True,
         }
-        
+
         if self.multi_label.value:
             parameters_input["multi_label"] = True
             parameters_input["db"] = False
         if self.ctc.value:
             parameters_input["ctc"] = True
-            
+
         logging.info("Parameters input: {}".format(parameters_input))
-            
+
         if not self.finetune.value:
             if self.template.value:
                 parameters_mllib = {
@@ -763,34 +807,55 @@ class Segmentation(Classification):
             "model": model,
         }
 
-        logging.info(f"Sending request http://{host}:{port}/services/{self.sname.value}")
-        c = requests.get(f"http://{host}:{port}/services/{self.sname.value}")
-        logging.info(f"Current state of service '{self.sname.value}':\n  {c.json()}")
-        # useful for the clear() method
-        self.del_request = (
-            f"http://{host}:{port}/services/{self.sname.value}?clear=full"
+        logging.info(
+            "Sending request http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname.value
+            )
+        )
+        c = requests.get(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname.value
+            )
+        )
+        logging.info(
+            "Current state of service '{sname}': {json}".format(
+                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+            )
         )
         if c.json()["status"]["msg"] != "NotFound":
-            self.del_request = (
-                f"http://{host}:{port}/services/{self.sname.value}?clear=full"
+            self.clear()
+            logging.warn(
+                (
+                    "Since service '{sname}' was still there, "
+                    "it has been fully cleared: {json}"
+                ).format(
+                    sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+                )
             )
-            c = requests.delete(self.del_request)
-            logging.warn(f"Since service '{self.sname.value}' was still there, it has been fully cleared:\n"
-                         f"  {c.json()}")
 
-        logging.info(f"Creating service '{self.sname.value}':\n  {body}")
+        logging.info(
+            "Creating service '{sname}': {body}".format(
+                sname=self.sname.value, body=json.dumps(body, indent=2)
+            )
+        )
         c = requests.put(
-            f"http://{host}:{port}/services/{self.sname.value}",
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname.value
+            ),
             json.dumps(body),
         )
-        logging.info(f"Reply from creating service '{self.sname.value}':\n  {c.json()}")
+        logging.info(
+            "Reply from creating service '{sname}':\n  {json}".format(
+                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+            )
+        )
 
         train_data = [self.training_repo.value]
         parameters_input = {
             "test_split": self.tsplit.value,
             "shuffle": True,
             "db": True,
-            "segmentation": True
+            "segmentation": True,
         }
         if self.testing_repo.value != "":
             train_data.append(self.testing_repo.value)
@@ -829,8 +894,7 @@ class Segmentation(Classification):
 
         parameters_output = {"measure": ["acc"]}
 
-
-        body = {
+        body: Dict[str, Any] = {
             "service": self.sname.value,
             "async": True,
             "parameters": {
@@ -841,8 +905,19 @@ class Segmentation(Classification):
             "data": train_data,
         }
 
-        logging.info(f"Start training phase:\n {body}")
-        c = requests.post(f"http://{host}:{port}/train", json.dumps(body))
-        logging.info(f"Reply from training service '{self.sname.value}':\n  {c.json()}")
-        print(c.json())
+        logging.info(
+            "Start training phase: {body}".format(
+                body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.post(
+            "http://{host}:{port}/train".format(host=host, port=port),
+            json.dumps(body),
+        )
+        logging.info(
+            "Reply from training service '{sname}': {json}".format(
+                sname=self.sname.value, json=json.dumps(c.json(), indent=2)
+            )
+        )
 
+        print(json.dumps(c.json(), indent=2))
