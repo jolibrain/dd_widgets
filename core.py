@@ -175,7 +175,15 @@ def send_dd(self):
         ),
         json.dumps(body),
     )
-    logging.info(
+    
+    if c.json()['status']['code'] != 200:
+        logging.warn(
+            "Reply from creating service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+    else:
+        logging.info(
         "Reply from creating service '{sname}': {json}".format(
             sname=self.sname, json=json.dumps(c.json(), indent=2)
         )
