@@ -3,7 +3,10 @@
 import json
 import logging
 import random
+import time
+from collections import OrderedDict
 from heapq import nlargest
+from inspect import signature
 from pathlib import Path
 from tempfile import mkstemp
 from typing import (Any, Dict, Iterator, List, Optional, Tuple, TypeVar,
@@ -17,8 +20,8 @@ import cv2
 import pandas as pd
 import requests
 from core import ImageTrainerMixin
-from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText,
-                        Layout, Output, SelectMultiple, Text, HBox, VBox)
+from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText, IntProgress,
+                        Layout, Output, SelectMultiple, Text as TextWidget, HBox, VBox)
 
 # fmt: on
 
@@ -96,17 +99,32 @@ class MLWidget(object):
     _widget_type = {int: IntText, float: FloatText, bool: Checkbox}
 
     output = Output(layout=Layout(max_width="650px"))  # typing: Output
-    # host: Text
-    # port: Text
+    # host: TextWidget
+    # port: TextWidget
+
+    def typing_info(self, local_vars: Dict[str, Any]):
+        fun = self.__init__  # type: ignore
+        typing_dict = get_type_hints(fun)
+        for param in signature(fun).parameters.values():
+            if param.name != 'sname':
+                yield (
+                    param.name,
+                    eval(param.name, local_vars),
+                    typing_dict[param.name],
+                )
 
     def __init__(
-        self, sname: str, params: Dict[str, Tuple[Any, type]], *args
+        self,
+        sname: str,
+        local_vars: Dict[str, Any],
+        *args
     ) -> None:
 
         # logger.addHandler(log_viewer(self.output),)
 
         self.sname = sname
 
+        self.pbar = IntProgress(min=0, max=100)
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
@@ -127,7 +145,7 @@ class MLWidget(object):
         self.clear_button.on_click(self.clear)
         self.hardclear_button.on_click(self.hardclear)
 
-        for name, (value, type_hint) in params.items():
+        for name, value, type_hint in self.typing_info(local_vars):
             self._add_widget(name, value, type_hint)
 
         self._configuration = VBox(
@@ -142,9 +160,10 @@ class MLWidget(object):
             setattr(
                 self,
                 name,
-                Text(  # Widget type by default then convert to str
+                TextWidget(  # Widget type by default then convert to str
                     value="" if value is None else str(value),
                     description=self._fields.get(name, name),
+                    layout=Layout(width='')
                 ),
             )
         else:
@@ -154,6 +173,7 @@ class MLWidget(object):
                 widget_type(
                     value=type_hint() if value is None else type_hint(value),
                     description=self._fields.get(name, name),
+                    layout=Layout(width='')
                 ),
             )
 
@@ -188,20 +208,29 @@ class MLWidget(object):
         host = self.host.value
         port = self.port.value
 
-        body = {
-            "mllib": "caffe",
-            "description": self.sname,
-            "type": "supervised",
-            "parameters": {
-                "mllib": {"nclasses": 42},  # why not?
-                "input": {"connector": "csv"},
-            },
-            "model": {
-                "repository": self.model_repo.value,
-                "create_repository": True,
-                # "templates": "../templates/caffe/"
-            },
-        }
+
+        body = OrderedDict(
+            [
+                ("mllib", "caffe"),
+                ("description", self.sname),
+                ("type", "supervised"),
+                (
+                    "parameters",
+                    {
+                        "mllib": {"nclasses": 42},  # why not?
+                        "input": {"connector": "csv"},
+                    },
+                ),
+                (
+                    "model",
+                    {
+                        "repository": self.model_repo.value,
+                        "create_repository": True,
+                        # "templates": "../templates/caffe/"
+                    },
+                ),
+            ]
+        )
 
         logging.info(
             "Creating service '{sname}':\n {body}".format(
@@ -306,6 +335,25 @@ class MLWidget(object):
         )
 
         print(json.dumps(c.json(), indent=2))
+        
+        self.value = self.iterations.value
+        self.pbar.bar_style = 'info'
+        self.pbar.max = self.iterations.value
+        
+        while True:
+            info = self.info()
+            self.pbar.bar_style = ''
+            
+            status = info['head']['status']
+
+            if status == 'finished':
+                self.pbar.value = self.iterations.value
+                self.pbar.bar_style = 'success'
+                break
+
+            self.pbar.value = info['body']['measure'].get('iteration', 0)
+
+            time.sleep(1)
 
     @output.capture(clear_output=True)
     def info(self, *_):
@@ -380,7 +428,7 @@ class Classification(MLWidget, ImageTrainerMixin):
     def __init__(
         self,
         sname: str,
-        *args,  # unnamed parameters are forbidden
+        *,  # unnamed parameters are forbidden
         training_repo: Path = None,
         testing_repo: Path = None,
         host: str = "localhost",
@@ -422,15 +470,7 @@ class Classification(MLWidget, ImageTrainerMixin):
         unchanged_data: bool = False
     ) -> None:
 
-        local_vars = locals()
-        params = {
-            # no access to eval(k) inside the comprehension
-            k: (eval(k, local_vars), v)
-            for k, v in get_type_hints(self.__init__).items()
-            if k not in ["return", "sname"]
-        }
-
-        super().__init__(sname, params)
+        super().__init__(sname, locals())
 
         self.train_labels = SelectMultiple(
             options=[], value=[], description="Training labels", disabled=False
@@ -457,6 +497,7 @@ class Classification(MLWidget, ImageTrainerMixin):
 
         self._img_explorer = VBox(
             [
+                self.pbar,
                 HBox([HBox([self.train_labels, self.test_labels])]),
                 self.file_list,
                 self.output,
@@ -504,7 +545,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
     def __init__(
         self,
         sname: str,
-        *args,  # unnamed parameters are forbidden
+        *,  # unnamed parameters are forbidden
         training_repo: Path = None,
         testing_repo: Path = None,
         host: str = "localhost",
@@ -547,15 +588,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         unchanged_data: bool = False
     ) -> None:
 
-        local_vars = locals()
-        params = {
-            # no access to eval(k) inside the comprehension
-            k: (eval(k, local_vars), v)
-            for k, v in get_type_hints(self.__init__).items()
-            if k not in ["return", "sname"]
-        }
-
-        super().__init__(sname, params)
+        super().__init__(sname, locals())
 
         self.train_labels = Button(
             description=Path(self.training_repo.value).name
@@ -582,6 +615,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
 
         self._img_explorer = VBox(
             [
+                self.pbar,
                 HBox([HBox([self.train_labels, self.test_labels])]),
                 self.file_list,
                 self.output,
@@ -657,7 +691,7 @@ class Detection(MLWidget, ImageTrainerMixin):
     def __init__(
         self,
         sname: str,
-        *args,  # unnamed parameters are forbidden
+        *,  # unnamed parameters are forbidden
         training_repo: Path = None,
         testing_repo: Path = None,
         host: str = "localhost",
@@ -699,15 +733,7 @@ class Detection(MLWidget, ImageTrainerMixin):
         unchanged_data: bool = False
     ) -> None:
 
-        local_vars = locals()
-        params = {
-            # no access to eval(k) inside the comprehension
-            k: (eval(k, local_vars), v)
-            for k, v in get_type_hints(self.__init__).items()
-            if k not in ["return", "sname"]
-        }
-
-        super().__init__(sname, params)
+        super().__init__(sname, locals())
 
         self.train_labels = Button(
             description=Path(self.training_repo.value).name
@@ -731,6 +757,7 @@ class Detection(MLWidget, ImageTrainerMixin):
 
         self._img_explorer = VBox(
             [
+                self.pbar,
                 HBox([HBox([self.train_labels, self.test_labels])]),
                 self.file_list,
                 self.output,
@@ -750,7 +777,7 @@ class CSV(MLWidget):
     def __init__(
         self,
         sname: str,
-        *args,
+        *,
         training_repo: Path = None,
         model_repo: Path = None,
         host: str = "localhost",
@@ -781,15 +808,8 @@ class CSV(MLWidget):
         scale_pos_weight: float = 1.0,
         shuffle: bool = True
     ):
-        local_vars = locals()
-        params = {
-            # no access to eval(k) inside the comprehension
-            k: (eval(k, local_vars), v)
-            for k, v in get_type_hints(self.__init__).items()
-            if k not in ["return", "sname"]
-        }
 
-        super().__init__(sname, params)
+        super().__init__(sname, locals())
 
         self._displays = HTML(
             value=pd.read_csv(training_repo).sample(5)._repr_html_()
@@ -799,6 +819,7 @@ class CSV(MLWidget):
             [
                 # HBox([HBox([self.train_labels, self.test_labels])]),
                 # self.file_list,
+                self.pbar,
                 self._displays,
                 self.output,
             ],
@@ -811,30 +832,38 @@ class CSV(MLWidget):
         )
 
     def _create_service_body(self):
-        body = {
-            "mllib": "caffe",
-            "description": self.sname,
-            "type": "supervised",
-            "parameters": {
-                "input": {
-                    "connector": "csv",
-                    "labels": self.csv_label.value,
-                    "db": False,
-                },
-                "mllib": {
-                    "template": "mlp",
-                    "nclasses": 7,
-                    "layers": [150, 150, 150],
-                    "activation": "prelu",
-                    "db": False,
-                },
-            },
-            "model": {
-                "templates": "../templates/caffe/",
-                "repository": self.model_repo.value,
-                "create_repository": True,
-            },
-        }
+        body = OrderedDict(
+            [
+                ("mllib", "caffe"),
+                ("description", self.sname),
+                ("type", "supervised"),
+                (
+                    "parameters",
+                    {
+                        "input": {
+                            "connector": "csv",
+                            "labels": self.csv_label.value,
+                            "db": False,
+                        },
+                        "mllib": {
+                            "template": "mlp",
+                            "nclasses": 7,
+                            "layers": [150, 150, 150],
+                            "activation": "prelu",
+                            "db": False,
+                        },
+                    },
+                ),
+                (
+                    "model",
+                    {
+                        "templates": "../templates/caffe/",
+                        "repository": self.model_repo.value,
+                        "create_repository": True,
+                    },
+                ),
+            ]
+        )
 
         if self.lregression.value:
             body["parameters"]["mllib"]["template"] = "lregression"
@@ -852,43 +881,50 @@ class CSV(MLWidget):
         return body
 
     def _train_body(self):
-        body = {
-            "service": self.sname,
-            "async": True,
-            "parameters": {
-                "mllib": {
-                    "gpu": True,
-                    "gpuid": self.gpuid.value,
-                    "resume": self.resume.value,
-                    "solver": {
-                        "iterations": self.iterations.value,
-                        "iter_size": 1,
-                        "test_interval": self.test_interval.value,
-                        "test_initialization": False,
-                        "base_lr": self.base_lr.value,
-                        "solver_type": "ADAM",
+        body = OrderedDict(
+            [
+                ("service", self.sname),
+                ("async", True),
+                (
+                    "parameters",
+                    {
+                        "mllib": {
+                            "gpu": True,
+                            "gpuid": self.gpuid.value,
+                            "resume": self.resume.value,
+                            "solver": {
+                                "iterations": self.iterations.value,
+                                "iter_size": 1,
+                                "test_interval": self.test_interval.value,
+                                "test_initialization": False,
+                                "base_lr": self.base_lr.value,
+                                "solver_type": "ADAM",
+                            },
+                            "net": {
+                                "batch_size": self.batch_size.value,
+                                "test_batch_size": self.test_batch_size.value,
+                            },
+                        },
+                        "input": {
+                            "label_offset": self.csv_label_offset.value,
+                            "label": self.csv_label.value,
+                            "id": self.csv_id.value,
+                            "separator": self.csv_separator.value,
+                            "shuffle": self.shuffle.value,
+                            "test_split": self.tsplit.value,
+                            "scale": self.scale.value,
+                            "db": False,
+                            "ignore": eval(self.csv_ignore.value),
+                            "categoricals": eval(self.csv_categoricals.value),
+                        },
+                        "output": {
+                            "measure": ["cmdiag", "cmfull", "mcll", "f1"]
+                        },
                     },
-                    "net": {
-                        "batch_size": self.batch_size.value,
-                        "test_batch_size": self.test_batch_size.value,
-                    },
-                },
-                "input": {
-                    "label_offset": self.csv_label_offset.value,
-                    "label": self.csv_label.value,
-                    "id": self.csv_id.value,
-                    "separator": self.csv_separator.value,
-                    "shuffle": self.shuffle.value,
-                    "test_split": self.tsplit.value,
-                    "scale": self.scale.value,
-                    "db": False,
-                    "ignore": eval(self.csv_ignore.value),
-                    "categoricals": eval(self.csv_categoricals.value),
-                },
-                "output": {"measure": ["cmdiag", "cmfull", "mcll", "f1"]},
-            },
-            "data": [self.training_repo.value],
-        }
+                ),
+                ("data", [self.training_repo.value]),
+            ]
+        )
 
         if self.nclasses.value == 2:
             body["parameters"]["output"]["measure"].append("auc")
@@ -898,7 +934,9 @@ class Text(MLWidget):
     def __init__(
         self,
         sname: str,
-        training_repo: str,
+        *,
+        training_repo: Path,
+        testing_repo: Optional[Path] = None,
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
@@ -913,17 +951,10 @@ class Text(MLWidget):
         tsplit: float = 0.2,
         min_count: int = 10,
         min_word_length: int = 5,
-        count: bool = False,
+        count: bool = False
     ):
-        local_vars = locals()
-        params = {
-            # no access to eval(k) inside the comprehension
-            k: (eval(k, local_vars), v)
-            for k, v in get_type_hints(self.__init__).items()
-            if k not in ["return", "sname"]
-        }
 
-        super().__init__(sname, params)
+        super().__init__(sname, locals())
 
         self.train_labels = SelectMultiple(
             options=[], value=[], description="Training labels", disabled=False
@@ -952,6 +983,7 @@ class Text(MLWidget):
 
         self._img_explorer = VBox(
             [
+                self.pbar,
                 HBox([HBox([self.train_labels, self.test_labels])]),
                 self.file_list,
                 self.output,
@@ -996,51 +1028,65 @@ class Text(MLWidget):
         self.train_labels.value = []
 
     def _create_service_body(self):
-        body = {
-            "mllib": "caffe",
-            "description": "newsgroup classification service",
-            "type": "supervised",
-            "parameters": {
-                "input": {"connector": "txt"},
-                "mllib": {
-                    "template": "mlp",
-                    "nclasses": self.nclasses.value,
-                    "layers": eval(self.layers.value),
-                    "activation": "relu",
-                },
-            },
-            "model": {
-                "templates": "../templates/caffe/",
-                "repository": self.model_repo.value,
-            },
-        }
+
+        body = OrderedDict(
+            [
+                ("mllib", "caffe"),
+                ("description", "newsgroup classification service"),
+                ("type", "supervised"),
+                (
+                    "parameters",
+                    {
+                        "input": {"connector": "txt"},
+                        "mllib": {
+                            "template": "mlp",
+                            "nclasses": self.nclasses.value,
+                            "layers": eval(self.layers.value),
+                            "activation": "relu",
+                        },
+                    },
+                ),
+                (
+                    "model",
+                    {
+                        "templates": "../templates/caffe/",
+                        "repository": self.model_repo.value,
+                    },
+                ),
+            ]
+        )
         return body
 
     def _train_body(self):
-        body = {
-            "service": self.sname,
-            "async": True,
-            "parameters": {
-                "mllib": {
-                    "gpu": True,
-                    "gpuid": self.gpuid.value,
-                    "solver": {
-                        "iterations": self.iterations.value,
-                        "test_interval": self.test_interval.value,
-                        "base_lr": self.base_lr.value,
+        body = OrderedDict(
+            [
+                ("service", self.sname),
+                ("async", True),
+                (
+                    "parameters",
+                    {
+                        "mllib": {
+                            "gpu": True,
+                            "gpuid": self.gpuid.value,
+                            "solver": {
+                                "iterations": self.iterations.value,
+                                "test_interval": self.test_interval.value,
+                                "base_lr": self.base_lr.value,
+                            },
+                            "net": {"batch_size": self.batch_size.value},
+                        },
+                        "input": {
+                            "shuffle": self.shuffle.value,
+                            "test_split": self.tsplit.value,
+                            "min_count": self.min_count.value,
+                            "min_word_length": self.min_word_length.value,
+                            "count": self.count.value,
+                        },
+                        "output": {"measure": ["mcll", "f1", "cmdiag"]},
                     },
-                    "net": {"batch_size": self.batch_size.value},
-                },
-                "input": {
-                    "shuffle": self.shuffle.value,
-                    "test_split": self.tsplit.value,
-                    "min_count": self.min_count.value,
-                    "min_word_length": self.min_word_length.value,
-                    "count": self.count.value,
-                },
-                "output": {"measure": ["mcll", "f1", "cmdiag"]},
-            },
-            "data": [self.training_repo.value],
-        }
+                ),
+                ("data", [self.training_repo.value]),
+            ]
+        )
 
         return body
