@@ -196,9 +196,9 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Segmentation":
             parameters_output = {"measure": ["acc"]}
-        if self.__class__.__name__ == "Detection":
+        elif self.__class__.__name__ == "Detection":
             parameters_output = {"measure": ["map"]}
-        if self.multi_label.value and self.regression.value:
+        elif self.multi_label.value and self.regression.value:
             parameters_output = {
                 "measure": [
                     "kl",
