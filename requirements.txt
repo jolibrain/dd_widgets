@@ -1,0 +1,4 @@
+requests
+ipywidgets
+matplotlib
+opencv
