@@ -219,7 +219,7 @@ class MLWidget(object):
             json.dumps(body),
         )
 
-        if c.json()["status"]["code"] != 200:
+        if c.json()["status"]["code"] != 201:
             logging.warning(
                 "Reply from creating service '{sname}': {json}".format(
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
@@ -278,7 +278,7 @@ class MLWidget(object):
             json.dumps(body),
         )
 
-        if c.json()["status"]["code"] != 200:
+        if c.json()["status"]["code"] != 201:
             logging.warning(
                 "Reply from creating service '{sname}': {json}".format(
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
@@ -896,3 +896,162 @@ class CSV(MLWidget):
 
         if self.nclasses.value == 2:
             body["parameters"]["output"]["measure"].append("auc")
+
+class Text(MLWidget):
+    def __init__(
+        self, 
+        sname: str,
+        training_repo: str,
+        model_repo: Path = None,
+        host: str = "localhost",
+        port: int = 1234,
+                nclasses: int = -1,
+        layers: List[str] = [],
+        gpuid: int = 0,
+        iterations: int=2000,
+        test_interval: int=200,
+             base_lr: float=0.01,
+          batch_size: int = 300,
+           shuffle: bool= True,
+           tsplit: float=0.2,
+          min_count: int = 10,
+         min_word_length: int = 5,
+           count: bool= False
+
+    ):
+        local_vars = locals()
+        params = {
+            # no access to eval(k) inside the comprehension
+            k: (eval(k, local_vars), v)
+            for k, v in get_type_hints(self.__init__).items()
+            if k not in ["return", "sname"]
+        }
+
+        super().__init__(sname, params)
+
+        self.train_labels = SelectMultiple(
+            options=[], value=[], description="Training labels", disabled=False
+        )
+
+        self.test_labels = SelectMultiple(
+            options=[], value=[], description="Testing labels", disabled=False
+        )
+
+        self.file_list = SelectMultiple(
+            options=[],
+            value=[],
+            rows=10,
+            description="File list",
+            layout=Layout(height="200px"),
+        )
+
+        #self.testing_repo.observe(self.update_label_list, names="value")
+        self.training_repo.observe(self.update_label_list, names="value")
+
+        self.train_labels.observe(self.update_train_file_list, names="value")
+        self.test_labels.observe(self.update_test_file_list, names="value")
+        self.file_list.observe(self.display_text, names="value")
+
+        self.update_label_list(())
+
+        self._img_explorer = VBox(
+            [
+                HBox([HBox([self.train_labels, self.test_labels])]),
+                self.file_list,
+                self.output,
+            ],
+            layout=Layout(width="650px"),
+        )
+
+        self._main_elt = HBox(
+            [self._configuration, self._img_explorer],
+            layout=Layout(width="900px"),
+        )
+
+    @MLWidget.output.capture(clear_output=True)
+    def display_text(self, args):
+        for path in args["new"]:
+            with open(path, 'r', encoding='utf-8', errors='ignore') as fh:
+                for i, x in enumerate(fh.readlines()):
+                    if i == 20:
+                        break
+                    print(x.strip())
+                
+    @MLWidget.output.capture(clear_output=True)
+    def update_train_file_list(self, *args):
+        if len(self.train_labels.value) == 0:
+            return
+        directory = Path(self.training_repo.value) / self.train_labels.value[0]
+        self.file_list.options = [
+            fh.as_posix()
+            for fh in sample_from_iterable(directory.glob("**/*"), 10)
+        ]
+        self.test_labels.value = []
+
+    @MLWidget.output.capture(clear_output=True)
+    def update_test_file_list(self, *args):
+        if len(self.test_labels.value) == 0:
+            return
+        directory = Path(self.testing_repo.value) / self.test_labels.value[0]
+        self.file_list.options = [
+            fh.as_posix()
+            for fh in sample_from_iterable(directory.glob("**/*"), 10)
+        ]
+        self.train_labels.value = []
+        
+    def _create_service_body(self):
+        body = {
+       "mllib":"caffe",
+       "description":"newsgroup classification service",
+       "type":"supervised",
+       "parameters":{
+         "input":{
+           "connector":"txt"
+         },
+         "mllib":{
+           "template": "mlp",
+           "nclasses":self.nclasses.value,
+           "layers": eval(self.layers.value),
+           "activation":"relu"
+         }
+       },
+       "model":{
+         "templates":"../templates/caffe/",
+         "repository": self.model_repo.value
+       }
+     }
+        return body
+    
+    def _train_body(self):
+        body = {
+       "service": self.sname,
+       "async":True,
+       "parameters":{
+         "mllib":{
+           "gpu":True,
+             'gpuid': self.gpuid.value,
+           "solver":{
+             "iterations":self.iterations.value,
+             "test_interval": self.test_interval.value,
+             "base_lr": self.base_lr.value
+           },
+           "net":{
+             "batch_size":self.batch_size.value
+           }
+         },
+         "input":{
+           "shuffle": self.shuffle.value,
+           "test_split": self.tsplit.value,
+           "min_count": self.min_count.value,
+           "min_word_length": self.min_word_length.value,
+           "count": self.count.value
+         },
+         "output":{
+           "measure":["mcll","f1","cmdiag"]
+         }
+       },
+       "data":[self.training_repo.value]
+     }
+        
+        return body
+    
