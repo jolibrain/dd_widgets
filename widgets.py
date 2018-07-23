@@ -24,42 +24,6 @@ from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText,
 
 # -- Logging --
 
-# This should not stay here in the long run
-# It's just a convenient way to debug when messages cannot always be printed
-
-class log_viewer(logging.Handler):
-    """ Class to redistribute python logging data """
-
-    # have a class member to store the existing logger
-    logger_instance = logging.getLogger("__name__")
-
-    def __init__(self, out, *args, **kwargs):
-        # Initialize the Handler
-        logging.Handler.__init__(self, *args)
-
-        # optional take format
-        # setFormatter function is derived from logging.Handler
-        for key, value in kwargs.items():
-            if "{}".format(key) == "format":
-                 self.setFormatter(value)
-
-        # make the logger send data to this class
-        self.logger_instance.addHandler(self)
-        
-        self.out = out
-
-    def emit(self, record):
-        """ Overload of logging.Handler method """
-
-        record = self.format(record)
-        self.out.outputs = ({'name': 'stdout',
-                        'output_type': 'stream',
-                        'text': ('\x1b[30m' + (record + '\n'))},) + self.out.outputs
-
-
-
-
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
