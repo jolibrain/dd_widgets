@@ -18,7 +18,7 @@ import pandas as pd
 import requests
 from core import send_dd
 from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText,
-                        Layout, Output, SelectMultiple, Text, VBox)
+                        Layout, Output, SelectMultiple, Text, HBox, VBox)
 
 # fmt: on
 
@@ -26,6 +26,39 @@ from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText,
 
 # This should not stay here in the long run
 # It's just a convenient way to debug when messages cannot always be printed
+
+class log_viewer(logging.Handler):
+    """ Class to redistribute python logging data """
+
+    # have a class member to store the existing logger
+    logger_instance = logging.getLogger("__name__")
+
+    def __init__(self, out, *args, **kwargs):
+        # Initialize the Handler
+        logging.Handler.__init__(self, *args)
+
+        # optional take format
+        # setFormatter function is derived from logging.Handler
+        for key, value in kwargs.items():
+            if "{}".format(key) == "format":
+                 self.setFormatter(value)
+
+        # make the logger send data to this class
+        self.logger_instance.addHandler(self)
+        
+        self.out = out
+
+    def emit(self, record):
+        """ Overload of logging.Handler method """
+
+        record = self.format(record)
+        self.out.outputs = ({'name': 'stdout',
+                        'output_type': 'stream',
+                        'text': ('\x1b[30m' + (record + '\n'))},) + self.out.outputs
+
+
+
+
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -42,6 +75,8 @@ logging.basicConfig(
 )
 
 logging.info("Creating widgets.log file")
+
+
 
 # -- Basic tools --
 
@@ -84,6 +119,8 @@ def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
 
 
+
+
 # -- Core 'abstract' widget for many tasks
 
 
@@ -104,11 +141,15 @@ class MLWidget(object):
     def __init__(
         self, sname: str, params: Dict[str, Tuple[Any, type]], *args
     ) -> None:
+        
+        #logger.addHandler(log_viewer(self.output),)
+
         self.sname = sname
 
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
+        self.hardclear_button = Button(description="Hard Clear")
 
         self._widgets = [  # typing: List[Widget]
             HTML(
@@ -116,14 +157,18 @@ class MLWidget(object):
                     task=self.__class__.__name__, sname=self.sname
                 )
             ),
-            self.run_button,
-            self.info_button,
-            self.clear_button,
+            HBox([            self.run_button,            self.clear_button,
+
+]),
+            HBox([self.info_button,
+            self.hardclear_button])
+            
         ]
 
         self.run_button.on_click(self.run)
         self.info_button.on_click(self.info)
         self.clear_button.on_click(self.clear)
+        self.hardclear_button.on_click(self.hardclear)
 
         for name, (value, type_hint) in params.items():
             self._add_widget(name, value, type_hint)
@@ -160,7 +205,7 @@ class MLWidget(object):
     def _ipython_display_(self):
         self._main_elt._ipython_display_()
 
-    @output.capture(clear_output=True)
+    #@output.capture(clear_output=True)
     def clear(self, *_):
         request = "http://{host}:{port}/services/{sname}?clear=full".format(
             host=self.host.value, port=self.port.value, sname=self.sname
@@ -171,8 +216,80 @@ class MLWidget(object):
                 sname=self.sname, json=json.dumps(c.json(), indent=2)
             )
         )
+        
+        print(json.dumps(c.json(), indent=2))
+        return c.json()
+        
+    @output.capture(clear_output=True)
+    def hardclear(self, *_):
+        # The basic version
+        j = MLWidget.create_service(self)
+        j = self.clear()
+
+    #@output.capture(clear_output=True)
+    def create_service(self, *_):
+        host = self.host.value
+        port = self.port.value
+
+        body = {
+            "mllib": "caffe",
+            "description": self.sname,
+            "type": "supervised",
+            "parameters": {
+                "mllib": {
+     # "db": True,
+     # "activation": "prelu",
+     # "dropout": 0.2,
+      "nclasses": self.nclasses.value,  # why not?
+     # "layers": [
+     #   150,
+     #   150,
+     #   150
+     # ]
+    },
+    "input": {
+      #"db": False,
+      #"labels": "Cover_Type",
+      "connector": "csv"
+    }
+
+            },
+            "model": {
+                "repository": self.model_repo.value,
+                "create_repository": True,
+                #"templates": "../templates/caffe/"
+            },
+        }
+
+        logging.info(
+            "Creating service '{sname}':\n {body}".format(
+                sname=self.sname, body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.put(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            ),
+            json.dumps(body),
+        )
+
+        if c.json()["status"]["code"] != 200:
+            logging.warning(
+                "Reply from creating service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+        else:
+            logging.info(
+                "Reply from creating service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+            
         print(json.dumps(c.json(), indent=2))
 
+        return c.json()
+        
     @output.capture(clear_output=True)
     def info(self, *_):
         # TODO job number
@@ -189,6 +306,7 @@ class MLWidget(object):
             )
         )
         print(json.dumps(c.json(), indent=2))
+        return c.json()
 
     @output.capture(clear_output=True)
     def update_label_list(self, _):
@@ -652,11 +770,11 @@ class CSV(MLWidget):
         mllib: str = "caffe",
         lregression: bool = False,
         scale: bool = False,
-        csv_id: str = "",
+        csv_id: str,
         csv_separator: str = ",",
         csv_ignore: List[str] = [],
         csv_label: str,
-        csv_label_offset: int = 0,
+        csv_label_offset: int = -1,
         csv_categoricals: List[str] = [],
         scale_pos_weight: float = 1.0,
         shuffle: bool = True
@@ -711,7 +829,7 @@ class CSV(MLWidget):
                     "nclasses": 7,
                     "layers": [150, 150, 150],
                     "activation": "prelu",
-                    "db": True,
+                    "db": False,
                 },
             },
             "model": {
@@ -813,8 +931,8 @@ class CSV(MLWidget):
                     "test_split": self.tsplit.value,
                     "scale": self.scale.value,
                     "db": False,
-                    "ignore": self.csv_ignore.value,
-                    "categoricals": self.csv_categoricals.value,
+                    "ignore": eval(self.csv_ignore.value),
+                    "categoricals": eval(self.csv_categoricals.value),
                 },
                 "output": {"measure": ["cmdiag", "cmfull", "mcll", "f1"]},
             },
