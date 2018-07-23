@@ -2,3 +2,4 @@ requests
 ipywidgets
 matplotlib
 opencv
+pandas
