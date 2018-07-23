@@ -649,6 +649,8 @@ class Segmentation(MLWidget, ImageTrainerMixin):
 
 
 class Detection(MLWidget, ImageTrainerMixin):
+    
+    #nclasses=3 # default unused parameters go here
     @MLWidget.output.capture(clear_output=True)
     def display_img(self, args):
         for path in args["new"]:
@@ -718,8 +720,8 @@ class Detection(MLWidget, ImageTrainerMixin):
         test_batch_size: int = 16,
         iter_size: int = 1,
         solver_type: str = "SGD",
-        noise_prob: float = 0.0,
-        distort_prob: float = 0.0,
+        noise_prob: float = 0.001,
+        distort_prob: float = 0.5,
         test_init: bool = False,
         class_weights: List[float] = [],
         weights: Path = None,
