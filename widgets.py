@@ -14,6 +14,7 @@ from IPython.display import Image, display
 from matplotlib import patches
 
 import cv2
+import pandas as pd
 import requests
 from core import send_dd
 from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText,
@@ -623,3 +624,219 @@ class Detection(MLWidget):
     def run(self, *_) -> None:
         logging.info("Sending a classification task")
         send_dd(self)
+
+
+class CSV(MLWidget):
+    def __init__(
+        self,
+        sname: str,
+        *args,
+        training_repo: Path = None,
+        model_repo: Path = None,
+        host: str = "localhost",
+        port: int = 1234,
+        tsplit: float = 0.01,
+        base_lr: float = 0.01,
+        iterations: int = 100,
+        test_interval: int = 1000,
+        step_size: int = 15000,
+        dropout: float = .2,
+        destroy: bool = False,
+        resume: bool = False,
+        finetune: bool = False,
+        weights: Optional[Path] = None,
+        nclasses: int = 2,
+        batch_size: int = 128,
+        test_batch_size: int = 16,
+        gpuid: int = 0,
+        mllib: str = "caffe",
+        lregression: bool = False,
+        scale: bool = False,
+        csv_id: str = "",
+        csv_separator: str = ",",
+        csv_ignore: List[str] = [],
+        csv_label: str,
+        csv_label_offset: int = 0,
+        csv_categoricals: List[str] = [],
+        scale_pos_weight: float = 1.0,
+        shuffle: bool = True
+    ):
+        local_vars = locals()
+        params = {
+            # no access to eval(k) inside the comprehension
+            k: (eval(k, local_vars), v)
+            for k, v in get_type_hints(self.__init__).items()
+            if k not in ["return", "sname"]
+        }
+
+        super().__init__(sname, params)
+
+        self._displays = HTML(
+            value=pd.read_csv(training_repo).sample(5)._repr_html_()
+        )
+
+        self._img_explorer = VBox(
+            [
+                # HBox([HBox([self.train_labels, self.test_labels])]),
+                # self.file_list,
+                self._displays,
+                self.output,
+            ],
+            layout=Layout(width="650px"),
+        )
+
+        self._main_elt = HBox(
+            [self._configuration, self._img_explorer],
+            layout=Layout(width="900px"),
+        )
+
+    @MLWidget.output.capture(clear_output=True)
+    def run(self, *_):
+
+        host = self.host.value
+        port = self.port.value
+
+        body = {
+            "mllib": "caffe",
+            "description": self.sname,
+            "type": "supervised",
+            "parameters": {
+                "input": {
+                    "connector": "csv",
+                    "labels": self.csv_label.value,
+                    "db": False,
+                },
+                "mllib": {
+                    "template": "mlp",
+                    "nclasses": 7,
+                    "layers": [150, 150, 150],
+                    "activation": "prelu",
+                    "db": True,
+                },
+            },
+            "model": {
+                "templates": "../templates/caffe/",
+                "repository": self.model_repo.value,
+                "create_repository": True,
+            },
+        }
+
+        if self.lregression.value:
+            body["parameters"]["mllib"]["template"] = "lregression"
+            del body["parameters"]["mllib"]["layes"]
+        else:
+            body["parameters"]["mllib"]["dropout"] = self.dropout.value
+
+        if self.mllib.value == "xgboost":
+            body["parameters"]["mllib"]["db"] = False
+
+        if self.finetune.value:
+            body["parameters"]["mllib"]["finetuning"] = True
+            body["parameters"]["mllib"]["weights"] = self.weights.value
+
+        logging.info(
+            "Sending request http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            )
+        )
+        c = requests.get(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            )
+        )
+        logging.info(
+            "Current state of service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+        if c.json()["status"]["msg"] != "NotFound":
+            self.clear()
+            logging.warning(
+                (
+                    "Since service '{sname}' was still there, "
+                    "it has been fully cleared: {json}"
+                ).format(sname=self.sname, json=json.dumps(c.json(), indent=2))
+            )
+
+        logging.info(
+            "Creating service '{sname}':\n {body}".format(
+                sname=self.sname, body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.put(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            ),
+            json.dumps(body),
+        )
+
+        if c.json()["status"]["code"] != 200:
+            logging.warning(
+                "Reply from creating service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+        else:
+            logging.info(
+                "Reply from creating service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+
+        body = {
+            "service": self.sname,
+            "async": True,
+            "parameters": {
+                "mllib": {
+                    "gpu": True,
+                    "gpuid": self.gpuid.value,
+                    "resume": self.resume.value,
+                    "solver": {
+                        "iterations": self.iterations.value,
+                        "iter_size": 1,
+                        "test_interval": self.test_interval.value,
+                        "test_initialization": False,
+                        "base_lr": self.base_lr.value,
+                        "solver_type": "ADAM",
+                    },
+                    "net": {
+                        "batch_size": self.batch_size.value,
+                        "test_batch_size": self.test_batch_size.value,
+                    },
+                },
+                "input": {
+                    "label_offset": self.csv_label_offset.value,
+                    "label": self.csv_label.value,
+                    "id": self.csv_id.value,
+                    "separator": self.csv_separator.value,
+                    "shuffle": self.shuffle.value,
+                    "test_split": self.tsplit.value,
+                    "scale": self.scale.value,
+                    "db": False,
+                    "ignore": self.csv_ignore.value,
+                    "categoricals": self.csv_categoricals.value,
+                },
+                "output": {"measure": ["cmdiag", "cmfull", "mcll", "f1"]},
+            },
+            "data": [self.training_repo.value],
+        }
+
+        if self.nclasses.value == 2:
+            body["parameters"]["output"]["measure"].append("auc")
+
+        logging.info(
+            "Start training phase: {body}".format(
+                body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.post(
+            "http://{host}:{port}/train".format(host=host, port=port),
+            json.dumps(body),
+        )
+        logging.info(
+            "Reply from training service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+
+        print(json.dumps(c.json(), indent=2))
