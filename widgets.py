@@ -16,7 +16,7 @@ from matplotlib import patches
 import cv2
 import pandas as pd
 import requests
-from core import send_dd
+from core import ImageTrainerMixin
 from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText,
                         Layout, Output, SelectMultiple, Text, HBox, VBox)
 
@@ -39,7 +39,6 @@ logging.basicConfig(
 )
 
 logging.info("Creating widgets.log file")
-
 
 
 # -- Basic tools --
@@ -83,8 +82,6 @@ def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
 
 
-
-
 # -- Core 'abstract' widget for many tasks
 
 
@@ -105,8 +102,8 @@ class MLWidget(object):
     def __init__(
         self, sname: str, params: Dict[str, Tuple[Any, type]], *args
     ) -> None:
-        
-        #logger.addHandler(log_viewer(self.output),)
+
+        # logger.addHandler(log_viewer(self.output),)
 
         self.sname = sname
 
@@ -121,12 +118,8 @@ class MLWidget(object):
                     task=self.__class__.__name__, sname=self.sname
                 )
             ),
-            HBox([            self.run_button,            self.clear_button,
-
-]),
-            HBox([self.info_button,
-            self.hardclear_button])
-            
+            HBox([self.run_button, self.clear_button]),
+            HBox([self.info_button, self.hardclear_button]),
         ]
 
         self.run_button.on_click(self.run)
@@ -169,7 +162,7 @@ class MLWidget(object):
     def _ipython_display_(self):
         self._main_elt._ipython_display_()
 
-    #@output.capture(clear_output=True)
+    # @output.capture(clear_output=True)
     def clear(self, *_):
         request = "http://{host}:{port}/services/{sname}?clear=full".format(
             host=self.host.value, port=self.port.value, sname=self.sname
@@ -180,17 +173,17 @@ class MLWidget(object):
                 sname=self.sname, json=json.dumps(c.json(), indent=2)
             )
         )
-        
+
         print(json.dumps(c.json(), indent=2))
         return c.json()
-        
+
     @output.capture(clear_output=True)
     def hardclear(self, *_):
         # The basic version
-        j = MLWidget.create_service(self)
-        j = self.clear()
+        MLWidget.create_service(self)
+        self.clear()
 
-    #@output.capture(clear_output=True)
+    # @output.capture(clear_output=True)
     def create_service(self, *_):
         host = self.host.value
         port = self.port.value
@@ -201,27 +194,16 @@ class MLWidget(object):
             "type": "supervised",
             "parameters": {
                 "mllib": {
-     # "db": True,
-     # "activation": "prelu",
-     # "dropout": 0.2,
-      "nclasses": self.nclasses.value,  # why not?
-     # "layers": [
-     #   150,
-     #   150,
-     #   150
-     # ]
-    },
-    "input": {
-      #"db": False,
-      #"labels": "Cover_Type",
-      "connector": "csv"
-    }
-
+                    "nclasses": 42,  # why not?
+                },
+                "input": {
+                    "connector": "csv"
+                },
             },
             "model": {
                 "repository": self.model_repo.value,
                 "create_repository": True,
-                #"templates": "../templates/caffe/"
+                # "templates": "../templates/caffe/"
             },
         }
 
@@ -249,11 +231,86 @@ class MLWidget(object):
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
                 )
             )
-            
+
         print(json.dumps(c.json(), indent=2))
 
         return c.json()
-        
+
+    @output.capture(clear_output=True)
+    def run(self, *_):
+        host = self.host.value
+        port = self.port.value
+        body = self._create_service_body()
+
+        logging.info(
+            "Sending request http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            )
+        )
+        c = requests.get(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            )
+        )
+        logging.info(
+            "Current state of service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+        if c.json()["status"]["msg"] != "NotFound":
+            self.clear()
+            logging.warning(
+                (
+                    "Since service '{sname}' was still there, "
+                    "it has been fully cleared: {json}"
+                ).format(sname=self.sname, json=json.dumps(c.json(), indent=2))
+            )
+
+        logging.info(
+            "Creating service '{sname}':\n {body}".format(
+                sname=self.sname, body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.put(
+            "http://{host}:{port}/services/{sname}".format(
+                host=host, port=port, sname=self.sname
+            ),
+            json.dumps(body),
+        )
+
+        if c.json()["status"]["code"] != 200:
+            logging.warning(
+                "Reply from creating service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+            return
+        else:
+            logging.info(
+                "Reply from creating service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+
+        body = self._train_body()
+
+        logging.info(
+            "Start training phase: {body}".format(
+                body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.post(
+            "http://{host}:{port}/train".format(host=host, port=port),
+            json.dumps(body),
+        )
+        logging.info(
+            "Reply from training service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+
+        print(json.dumps(c.json(), indent=2))
+
     @output.capture(clear_output=True)
     def info(self, *_):
         # TODO job number
@@ -289,7 +346,7 @@ class MLWidget(object):
             self.nclasses.value = str(len(self.train_labels.options))
 
 
-class Classification(MLWidget):
+class Classification(MLWidget, ImageTrainerMixin):
     @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
         if len(self.train_labels.value) == 0:
@@ -418,13 +475,8 @@ class Classification(MLWidget):
 
         self.update_label_list(())
 
-    @MLWidget.output.capture(clear_output=True)
-    def run(self, *_) -> None:
-        logging.info("Sending a classification task")
-        send_dd(self)
 
-
-class Segmentation(MLWidget):
+class Segmentation(MLWidget, ImageTrainerMixin):
     @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
         # print (Path(self.training_repo.value).read_text().split('\n'))
@@ -565,13 +617,8 @@ class Segmentation(MLWidget):
             # integrate THIS : https://github.com/alx/react-bounding-box
             # (cv2.imread(self.file_dict[Path(path)].as_posix()))
 
-    @MLWidget.output.capture(clear_output=True)
-    def run(self, *_) -> None:
-        logging.info("Sending a segmentation task")
-        send_dd(self)
 
-
-class Detection(MLWidget):
+class Detection(MLWidget, ImageTrainerMixin):
     @MLWidget.output.capture(clear_output=True)
     def display_img(self, args):
         for path in args["new"]:
@@ -702,11 +749,6 @@ class Detection(MLWidget):
 
         self.update_label_list(())
 
-    @MLWidget.output.capture(clear_output=True)
-    def run(self, *_) -> None:
-        logging.info("Sending a classification task")
-        send_dd(self)
-
 
 class CSV(MLWidget):
     def __init__(
@@ -772,12 +814,7 @@ class CSV(MLWidget):
             layout=Layout(width="900px"),
         )
 
-    @MLWidget.output.capture(clear_output=True)
-    def run(self, *_):
-
-        host = self.host.value
-        port = self.port.value
-
+    def _create_service_body(self):
         body = {
             "mllib": "caffe",
             "description": self.sname,
@@ -816,55 +853,9 @@ class CSV(MLWidget):
             body["parameters"]["mllib"]["finetuning"] = True
             body["parameters"]["mllib"]["weights"] = self.weights.value
 
-        logging.info(
-            "Sending request http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname
-            )
-        )
-        c = requests.get(
-            "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname
-            )
-        )
-        logging.info(
-            "Current state of service '{sname}': {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
-            )
-        )
-        if c.json()["status"]["msg"] != "NotFound":
-            self.clear()
-            logging.warning(
-                (
-                    "Since service '{sname}' was still there, "
-                    "it has been fully cleared: {json}"
-                ).format(sname=self.sname, json=json.dumps(c.json(), indent=2))
-            )
+        return body
 
-        logging.info(
-            "Creating service '{sname}':\n {body}".format(
-                sname=self.sname, body=json.dumps(body, indent=2)
-            )
-        )
-        c = requests.put(
-            "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname
-            ),
-            json.dumps(body),
-        )
-
-        if c.json()["status"]["code"] != 200:
-            logging.warning(
-                "Reply from creating service '{sname}': {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-        else:
-            logging.info(
-                "Reply from creating service '{sname}': {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-
+    def _train_body(self):
         body = {
             "service": self.sname,
             "async": True,
@@ -905,20 +896,3 @@ class CSV(MLWidget):
 
         if self.nclasses.value == 2:
             body["parameters"]["output"]["measure"].append("auc")
-
-        logging.info(
-            "Start training phase: {body}".format(
-                body=json.dumps(body, indent=2)
-            )
-        )
-        c = requests.post(
-            "http://{host}:{port}/train".format(host=host, port=port),
-            json.dumps(body),
-        )
-        logging.info(
-            "Reply from training service '{sname}': {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
-            )
-        )
-
-        print(json.dumps(c.json(), indent=2))

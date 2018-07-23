@@ -7,271 +7,223 @@ from pathlib import Path
 import requests
 
 
-def send_dd(self):
-    width = int(self.img_width.value)
-    height = int(self.img_height.value)
-    crop_size = int(self.crop_size.value)
+class ImageTrainerMixin:
+    def _create_service_body(self):
+        width = int(self.img_width.value)
+        height = int(self.img_height.value)
+        crop_size = int(self.crop_size.value)
 
-    nclasses = int(self.nclasses.value)
-    if nclasses == -1:
-        nclasses = len(os.walk(self.training_repo.value).next()[1])
+        nclasses = int(self.nclasses.value)
+        if nclasses == -1:
+            nclasses = len(os.walk(self.training_repo.value).next()[1])
 
-    logging.info("{} classes".format(nclasses))
-    host = self.host.value
-    port = self.port.value
-    description = "imagenet classifier"
-    mllib = "caffe"
+        logging.info("{} classes".format(nclasses))
+        description = "imagenet classifier"
+        mllib = "caffe"
 
-    model = {
-        "templates": "../templates/caffe/",
-        "repository": self.model_repo.value,
-        "create_repository": True,
-    }
+        model = {
+            "templates": "../templates/caffe/",
+            "repository": self.model_repo.value,
+            "create_repository": True,
+        }
 
-    if self.weights.value:
-        if not Path(self.model_repo.value).is_dir():
-            logging.warn(
-                "Creating repository directory: {}".format(
-                    self.model_repo.value
+        if self.weights.value:
+            if not Path(self.model_repo.value).is_dir():
+                logging.warn(
+                    "Creating repository directory: {}".format(
+                        self.model_repo.value
+                    )
                 )
-            )
-            Path(self.model_repo.value).mkdir(parents=True)
-            # change permission if dede is not run by current user
-            Path(self.model_repo.value).chmod(0o777)
+                Path(self.model_repo.value).mkdir(parents=True)
+                # change permission if dede is not run by current user
+                Path(self.model_repo.value).chmod(0o777)
 
-        shutil.copy(self.weights.value, self.model_repo.value + "/")
+            shutil.copy(self.weights.value, self.model_repo.value + "/")
 
-    parameters_input = {
-        "connector": "image",
-        "width": width,
-        "height": height,
-        "bw": self.bw.value,
-        "db": True,
-    }
-
-    if self.__class__.__name__ == "Detection":
-        parameters_input["bbox"] = True
-    if self.__class__.__name__ == "Segmentation":
-        parameters_input["segmentation"] = True
-
-    if self.multi_label.value:
-        parameters_input["multi_label"] = True
-        parameters_input["db"] = False
-    if self.ctc.value:
-        parameters_input["ctc"] = True
-
-    logging.info(
-        "Parameters input: {}".format(json.dumps(parameters_input, indent=2))
-    )
-
-    if not self.finetune.value:
-        if self.template.value:
-            parameters_mllib = {
-                "template": self.template.value,
-                "nclasses": nclasses,
-                "rotate": self.rotate.value,
-                "mirror": self.mirror.value,
-                "layers": eval(self.layers.value),  # List of strings
-                "db": True,
-            }
-        else:
-            parameters_mllib = {
-                "nclasses": nclasses,
-                "mirror": self.mirror.value,
-                "rotate": self.rotate.value,
-            }
-    else:
-        if self.template.value:
-            parameters_mllib = {
-                "template": self.template.value,
-                "finetuning": True,
-                "nclasses": nclasses,
-                "weights": self.weights.value,
-                "rotate": self.rotate.value,
-                "mirror": self.mirror.value,
-            }
-        else:
-            parameters_mllib = {
-                "finetuning": True,
-                "nclasses": nclasses,
-                "weights": self.weights.value,
-                "rotate": self.rotate.value,
-                "mirror": self.mirror.value,
-            }
-    if self.multi_label.value:
-        parameters_mllib["db"] = False
-
-    if crop_size > 0:
-        parameters_mllib["crop_size"] = crop_size
-    if self.noise_prob.value > 0.0:
-        parameters_mllib["noise"] = {
-            "all_effects": True,
-            "prob": self.noise_prob.value,
+        parameters_input = {
+            "connector": "image",
+            "width": width,
+            "height": height,
+            "bw": self.bw.value,
+            "db": True,
         }
-    if self.distort_prob.value > 0.0:
-        parameters_mllib["distort"] = {
-            "all_effects": True,
-            "prob": self.distort_prob.value,
-        }
-    parameters_mllib["gpu"] = True
-    parameters_mllib["gpuid"] = self.gpuid.value
-    if self.regression.value:
-        parameters_mllib["regression"] = True
 
-    logging.info(
-        "Parameters mllib: {}".format(json.dumps(parameters_input, indent=2))
-    )
+        if self.__class__.__name__ == "Detection":
+            parameters_input["bbox"] = True
+        if self.__class__.__name__ == "Segmentation":
+            parameters_input["segmentation"] = True
 
-    parameters_output = {}
-    # print (parameters_input)
-    # print (parameters_mllib)
-    # pserv = dd.put_service(self.sname.value,model,description,mllib,
-    #                       parameters_input,parameters_mllib,parameters_output)
+        if self.multi_label.value:
+            parameters_input["multi_label"] = True
+            parameters_input["db"] = False
+        if self.ctc.value:
+            parameters_input["ctc"] = True
 
-    body = {  # typing: Dict[str, Any]
-        "description": description,
-        "mllib": mllib,
-        "type": "supervised",
-        "parameters": {
-            "input": parameters_input,
-            "mllib": parameters_mllib,
-            "output": parameters_output,
-        },
-        "model": model,
-    }
-
-    logging.info(
-        "Sending request http://{host}:{port}/services/{sname}".format(
-            host=host, port=port, sname=self.sname
-        )
-    )
-    c = requests.get(
-        "http://{host}:{port}/services/{sname}".format(
-            host=host, port=port, sname=self.sname
-        )
-    )
-    logging.info(
-        "Current state of service '{sname}': {json}".format(
-            sname=self.sname, json=json.dumps(c.json(), indent=2)
-        )
-    )
-    if c.json()["status"]["msg"] != "NotFound":
-        self.clear()
-        logging.warn(
-            (
-                "Since service '{sname}' was still there, "
-                "it has been fully cleared: {json}"
-            ).format(sname=self.sname, json=json.dumps(c.json(), indent=2))
-        )
-
-    logging.info(
-        "Creating service '{sname}':\n {body}".format(
-            sname=self.sname, body=json.dumps(body, indent=2)
-        )
-    )
-    c = requests.put(
-        "http://{host}:{port}/services/{sname}".format(
-            host=host, port=port, sname=self.sname
-        ),
-        json.dumps(body),
-    )
-    
-    if c.json()['status']['code'] != 200:
-        logging.warn(
-            "Reply from creating service '{sname}': {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
-            )
-        )
-    else:
         logging.info(
-        "Reply from creating service '{sname}': {json}".format(
-            sname=self.sname, json=json.dumps(c.json(), indent=2)
+            "Parameters input: {}".format(
+                json.dumps(parameters_input, indent=2)
+            )
         )
-    )
 
-    train_data = [self.training_repo.value]
-    parameters_input = {
-        "test_split": self.tsplit.value,
-        "shuffle": True,
-        "db": True,
-    }
+        if not self.finetune.value:
+            if self.template.value:
+                parameters_mllib = {
+                    "template": self.template.value,
+                    "nclasses": nclasses,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                    "layers": eval(self.layers.value),  # List of strings
+                    "db": True,
+                }
+            else:
+                parameters_mllib = {
+                    "nclasses": nclasses,
+                    "mirror": self.mirror.value,
+                    "rotate": self.rotate.value,
+                }
+        else:
+            if self.template.value:
+                parameters_mllib = {
+                    "template": self.template.value,
+                    "finetuning": True,
+                    "nclasses": nclasses,
+                    "weights": self.weights.value,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                }
+            else:
+                parameters_mllib = {
+                    "finetuning": True,
+                    "nclasses": nclasses,
+                    "weights": self.weights.value,
+                    "rotate": self.rotate.value,
+                    "mirror": self.mirror.value,
+                }
+        if self.multi_label.value:
+            parameters_mllib["db"] = False
 
-    if self.__class__.__name__ == "Segmentation":
-        parameters_input["segmentation"] = True
+        if crop_size > 0:
+            parameters_mllib["crop_size"] = crop_size
+        if self.noise_prob.value > 0.0:
+            parameters_mllib["noise"] = {
+                "all_effects": True,
+                "prob": self.noise_prob.value,
+            }
+        if self.distort_prob.value > 0.0:
+            parameters_mllib["distort"] = {
+                "all_effects": True,
+                "prob": self.distort_prob.value,
+            }
+        parameters_mllib["gpu"] = True
+        parameters_mllib["gpuid"] = self.gpuid.value
+        if self.regression.value:
+            parameters_mllib["regression"] = True
 
-    if self.testing_repo.value != "":
-        train_data.append(self.testing_repo.value)
-        parameters_input = {"shuffle": True}
+        logging.info(
+            "Parameters mllib: {}".format(
+                json.dumps(parameters_input, indent=2)
+            )
+        )
 
-    if self.multi_label.value:
-        parameters_input["db"] = False
-    parameters_mllib = {
-        "gpu": True,
-        "gpuid": self.gpuid.value,
-        "resume": self.resume.value,
-        "net": {
-            "batch_size": self.batch_size.value,
-            "test_batch_size": self.test_batch_size.value,
-        },
-        "solver": {
-            "test_initialization": self.test_init.value,
-            "iterations": self.iterations.value,
-            "test_interval": self.test_interval.value,
-            "snapshot": self.snapshot_interval.value,
-            "base_lr": self.base_lr.value,
-            "solver_type": self.solver_type.value,
-            "iter_size": self.iter_size.value,
-        },
-    }
-    if self.__class__.__name__ == 'Detection':
-        parameters_mllib['bbox'] = True
+        parameters_output = {}
+        # print (parameters_input)
+        # print (parameters_mllib)
+        # pserv = dd.put_service(self.sname.value,model,description,mllib,
+        #                       parameters_input,parameters_mllib,parameters_output)
 
-    # TODO: lr policy as arguments
-    # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
-    if self.rand_skip.value > 0 and self.resume.value:
-        parameters_mllib["solver"]["rand_skip"] = self.rand_skip.value
-    if self.class_weights.value:
-        parameters_mllib["class_weights"] = eval(self.class_weights.value)
-    if self.ignore_label.value >= 0:
-        parameters_mllib["ignore_label"] = self.ignore_label.value
-    if self.timesteps.value:
-        parameters_mllib["timesteps"] = self.timesteps.value
-
-    if self.__class__.__name__ == "Segmentation":
-        parameters_output = {"measure": ["acc"]}
-    if self.__class__.__name__ == "Detection":
-        parameters_output = {"measure": ["map"]}
-    if self.multi_label.value and self.regression.value:
-        parameters_output = {
-            "measure": ["kl", "js", "was", "ks", "dc", "r2", "deltas", "eucll"]
+        body = {  # typing: Dict[str, Any]
+            "description": description,
+            "mllib": mllib,
+            "type": "supervised",
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "model": model,
         }
-    elif self.ctc.value:
-        parameters_output = {"measure": ["acc"]}
-    else:
-        parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
+        return body
 
-    body = {
-        "service": self.sname,
-        "async": True,
-        "parameters": {
-            "input": parameters_input,
-            "mllib": parameters_mllib,
-            "output": parameters_output,
-        },
-        "data": train_data,
-    }
+    def _train_body(self):
 
-    logging.info(
-        "Start training phase: {body}".format(body=json.dumps(body, indent=2))
-    )
-    c = requests.post(
-        "http://{host}:{port}/train".format(host=host, port=port),
-        json.dumps(body),
-    )
-    logging.info(
-        "Reply from training service '{sname}': {json}".format(
-            sname=self.sname, json=json.dumps(c.json(), indent=2)
-        )
-    )
+        train_data = [self.training_repo.value]
+        parameters_input = {
+            "test_split": self.tsplit.value,
+            "shuffle": True,
+            "db": True,
+        }
 
-    print(json.dumps(c.json(), indent=2))
+        if self.__class__.__name__ == "Segmentation":
+            parameters_input["segmentation"] = True
+
+        if self.testing_repo.value != "":
+            train_data.append(self.testing_repo.value)
+            parameters_input = {"shuffle": True}
+
+        if self.multi_label.value:
+            parameters_input["db"] = False
+        parameters_mllib = {
+            "gpu": True,
+            "gpuid": self.gpuid.value,
+            "resume": self.resume.value,
+            "net": {
+                "batch_size": self.batch_size.value,
+                "test_batch_size": self.test_batch_size.value,
+            },
+            "solver": {
+                "test_initialization": self.test_init.value,
+                "iterations": self.iterations.value,
+                "test_interval": self.test_interval.value,
+                "snapshot": self.snapshot_interval.value,
+                "base_lr": self.base_lr.value,
+                "solver_type": self.solver_type.value,
+                "iter_size": self.iter_size.value,
+            },
+        }
+        if self.__class__.__name__ == "Detection":
+            parameters_mllib["bbox"] = True
+
+        # TODO: lr policy as arguments
+        # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
+        if self.rand_skip.value > 0 and self.resume.value:
+            parameters_mllib["solver"]["rand_skip"] = self.rand_skip.value
+        if self.class_weights.value:
+            parameters_mllib["class_weights"] = eval(self.class_weights.value)
+        if self.ignore_label.value >= 0:
+            parameters_mllib["ignore_label"] = self.ignore_label.value
+        if self.timesteps.value:
+            parameters_mllib["timesteps"] = self.timesteps.value
+
+        if self.__class__.__name__ == "Segmentation":
+            parameters_output = {"measure": ["acc"]}
+        if self.__class__.__name__ == "Detection":
+            parameters_output = {"measure": ["map"]}
+        if self.multi_label.value and self.regression.value:
+            parameters_output = {
+                "measure": [
+                    "kl",
+                    "js",
+                    "was",
+                    "ks",
+                    "dc",
+                    "r2",
+                    "deltas",
+                    "eucll",
+                ]
+            }
+        elif self.ctc.value:
+            parameters_output = {"measure": ["acc"]}
+        else:
+            parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
+
+        body = {
+            "service": self.sname,
+            "async": True,
+            "parameters": {
+                "input": parameters_input,
+                "mllib": parameters_mllib,
+                "output": parameters_output,
+            },
+            "data": train_data,
+        }
+        return body
