@@ -318,7 +318,7 @@ class MLWidget(object):
             )
 
         body = self._train_body()
-
+        
         logging.info(
             "Start training phase: {body}".format(
                 body=json.dumps(body, indent=2)
@@ -467,7 +467,8 @@ class Classification(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         ctc: bool = False,
         timesteps: int = 32,
-        unchanged_data: bool = False
+        unchanged_data: bool = False,
+        target_repository: str = ""
     ) -> None:
 
         super().__init__(sname, locals())
@@ -585,7 +586,8 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         ctc: bool = False,
         timesteps: int = 32,
-        unchanged_data: bool = False
+        unchanged_data: bool = False,
+        target_repository: str = ""
     ) -> None:
 
         super().__init__(sname, locals())
@@ -732,7 +734,8 @@ class Detection(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         ctc: bool = False,
         timesteps: int = 32,
-        unchanged_data: bool = False
+        unchanged_data: bool = False,
+        target_repository: str = ""
     ) -> None:
 
         super().__init__(sname, locals())
@@ -808,7 +811,8 @@ class CSV(MLWidget):
         csv_label_offset: int = -1,
         csv_categoricals: List[str] = [],
         scale_pos_weight: float = 1.0,
-        shuffle: bool = True
+        shuffle: bool = True,
+        target_repository: str = ""
     ):
 
         super().__init__(sname, locals())
@@ -942,18 +946,31 @@ class Text(MLWidget):
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        db: bool = False,
         nclasses: int = -1,
         layers: List[str] = [],
         gpuid: int = 0,
-        iterations: int = 2000,
-        test_interval: int = 200,
-        base_lr: float = 0.01,
-        batch_size: int = 300,
+        iterations: int = 25000,
+        test_interval: int = 1000,
+        base_lr: float = 0.001,
+        solver_type: str = "SGD",
+        batch_size: int = 128,
         shuffle: bool = True,
         tsplit: float = 0.2,
         min_count: int = 10,
         min_word_length: int = 5,
-        count: bool = False
+        count: bool = False,
+        tfidf: bool = False,
+        sentences: bool = False,
+        characters: bool = False,
+        sequence: int = -1,
+        read_forward: bool = True,
+        alphabet: str = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:’\“/\_@#$%^&*~`+-=<>()[]{}",
+        sparse: bool = False,
+        template: str = "mlp",
+        activation: str = "relu",
+        embedding: bool = False,
+        target_repository: str = ""
     ):
 
         super().__init__(sname, locals())
@@ -998,6 +1015,9 @@ class Text(MLWidget):
             layout=Layout(width="900px"),
         )
 
+        if self.characters:
+            self.db: True
+
     @MLWidget.output.capture(clear_output=True)
     def display_text(self, args):
         for path in args["new"]:
@@ -1039,12 +1059,20 @@ class Text(MLWidget):
                 (
                     "parameters",
                     {
-                        "input": {"connector": "txt"},
+                        "input": {
+                            "connector": "txt",
+                            "characters": self.characters.value,
+                            "sequence": self.sequence.value,
+                            "read_forward": self.read_forward.value,
+                            "alphabet": self.alphabet.value,
+                            "sparse": self.sparse.value,
+                            "embedding": self.embedding.value
+                        },
                         "mllib": {
-                            "template": "mlp",
+                            "template": self.template.value,
                             "nclasses": self.nclasses.value,
                             "layers": eval(self.layers.value),
-                            "activation": "relu",
+                            "activation": self.activation.value,
                         },
                     },
                 ),
@@ -1053,6 +1081,7 @@ class Text(MLWidget):
                     {
                         "templates": "../templates/caffe/",
                         "repository": self.model_repo.value,
+                        "create_repository": True
                     },
                 ),
             ]
@@ -1073,7 +1102,9 @@ class Text(MLWidget):
                             "solver": {
                                 "iterations": self.iterations.value,
                                 "test_interval": self.test_interval.value,
+                                "test_initialization": False,
                                 "base_lr": self.base_lr.value,
+                                "solver_type": self.solver_type.value
                             },
                             "net": {"batch_size": self.batch_size.value},
                         },
@@ -1083,6 +1114,14 @@ class Text(MLWidget):
                             "min_count": self.min_count.value,
                             "min_word_length": self.min_word_length.value,
                             "count": self.count.value,
+                            "tfidf": self.tfidf.value,
+                            "sentences": self.sentences.value,
+                            "characters": self.characters.value,
+                            "sequence": self.sequence.value,
+                            "read_forward": self.read_forward.value,
+                            "alphabet": self.alphabet.value,
+                            "embedding": self.embedding.value,
+                            "db": self.db.value
                         },
                         "output": {"measure": ["mcll", "f1", "cmdiag"]},
                     },

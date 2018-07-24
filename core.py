@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
+import sys
 
 import requests
 
@@ -193,7 +194,7 @@ class ImageTrainerMixin:
             parameters_mllib["ignore_label"] = self.ignore_label.value
         if self.timesteps.value:
             parameters_mllib["timesteps"] = self.timesteps.value
-
+        
         if self.__class__.__name__ == "Segmentation":
             parameters_output = {"measure": ["acc"]}
         elif self.__class__.__name__ == "Detection":
@@ -216,6 +217,8 @@ class ImageTrainerMixin:
         else:
             parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
 
+        parameters_output["target_repository"] = ""
+            
         body = {
             "service": self.sname,
             "async": True,
