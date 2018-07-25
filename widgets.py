@@ -704,6 +704,8 @@ class Detection(MLWidget, ImageTrainerMixin):
         model_repo: Optional[str] = None,
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
+        db_width: Optional[int] = 0,
+        db_height: Optional[int] = 0,
         base_lr: float = 1e-4,
         iterations: int = 10000,
         snapshot_interval: int = 5000,
