@@ -51,6 +51,8 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Detection":
             parameters_input["bbox"] = True
+            parameters_input["db_width"] = self.db_width.value
+            parameters_input["db_height"] = self.db_height.value
         if self.__class__.__name__ == "Segmentation":
             parameters_input["segmentation"] = True
 
