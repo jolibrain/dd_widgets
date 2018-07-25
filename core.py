@@ -19,7 +19,7 @@ class ImageTrainerMixin:
             nclasses = len(os.walk(self.training_repo.value).next()[1])
 
         logging.info("{} classes".format(nclasses))
-        description = "imagenet classifier"
+        description = "model"
         mllib = "caffe"
 
         model = {
@@ -51,8 +51,7 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Detection":
             parameters_input["bbox"] = True
-            parameters_input["db_width"] = self.db_width.value
-            parameters_input["db_height"] = self.db_height.value
+            
         if self.__class__.__name__ == "Segmentation":
             parameters_input["segmentation"] = True
 
@@ -158,7 +157,10 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Segmentation":
             parameters_input["segmentation"] = True
-
+        if self.__class__.__name__ == "Detection":
+            parameters_input["db_width"] = self.db_width.value
+            parameters_input["db_height"] = self.db_height.value
+            
         if self.testing_repo.value != "":
             train_data.append(self.testing_repo.value)
             parameters_input = {"shuffle": True}
@@ -185,7 +187,8 @@ class ImageTrainerMixin:
         }
         if self.__class__.__name__ == "Detection":
             parameters_mllib["bbox"] = True
-
+            
+            
         # TODO: lr policy as arguments
         # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
         if self.rand_skip.value > 0 and self.resume.value:
