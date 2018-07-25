@@ -791,7 +791,10 @@ class CSV(MLWidget):
         base_lr: float = 0.01,
         iterations: int = 100,
         test_interval: int = 1000,
-        step_size: int = 15000,
+        step_size: int = 0,
+        template: Optional[str] = None,
+        layers: List[int] = [],
+        activation: str = "relu",
         dropout: float = .2,
         destroy: bool = False,
         resume: bool = False,
@@ -812,6 +815,7 @@ class CSV(MLWidget):
         csv_categoricals: List[str] = [],
         scale_pos_weight: float = 1.0,
         shuffle: bool = True,
+        solver_type: str = "AMSGRAD",
         target_repository: str = ""
     ):
 
@@ -852,11 +856,12 @@ class CSV(MLWidget):
                             "db": False,
                         },
                         "mllib": {
-                            "template": "mlp",
-                            "nclasses": 7,
-                            "layers": [150, 150, 150],
-                            "activation": "prelu",
+                            "template": self.template.value,
+                            "nclasses": self.nclasses.value,
+                            "activation": self.activation.value,
                             "db": False,
+                            "template":self.template.value,
+                            "layers": eval(self.layers.value),
                         },
                     },
                 ),
@@ -904,7 +909,7 @@ class CSV(MLWidget):
                                 "test_interval": self.test_interval.value,
                                 "test_initialization": False,
                                 "base_lr": self.base_lr.value,
-                                "solver_type": "ADAM",
+                                "solver_type": self.solver_type.value,
                             },
                             "net": {
                                 "batch_size": self.batch_size.value,
@@ -935,7 +940,8 @@ class CSV(MLWidget):
         if self.nclasses.value == 2:
             body["parameters"]["output"]["measure"].append("auc")
 
-
+        return body
+            
 class Text(MLWidget):
     def __init__(
         self,
