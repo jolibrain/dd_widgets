@@ -157,16 +157,18 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Segmentation":
             parameters_input["segmentation"] = True
+            
         if self.__class__.__name__ == "Detection":
             parameters_input["db_width"] = self.db_width.value
             parameters_input["db_height"] = self.db_height.value
             
         if self.testing_repo.value != "":
             train_data.append(self.testing_repo.value)
-            parameters_input = {"shuffle": True}
+            parameters_input["shuffle"] = True
 
         if self.multi_label.value:
             parameters_input["db"] = False
+            
         parameters_mllib = {
             "gpu": True,
             "gpuid": self.gpuid.value,
