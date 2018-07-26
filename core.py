@@ -19,7 +19,7 @@ class ImageTrainerMixin:
             nclasses = len(os.walk(self.training_repo.value).next()[1])
 
         logging.info("{} classes".format(nclasses))
-        description = "model"
+        description = self.description.value
         mllib = "caffe"
 
         model = {
