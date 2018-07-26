@@ -184,8 +184,8 @@ class MLWidget(object):
 
     # @output.capture(clear_output=True)
     def clear(self, *_):
-        request = "http://{host}:{port}/services/{sname}?clear=full".format(
-            host=self.host.value, port=self.port.value, sname=self.sname
+        request = "http://{host}:{port}/{path}/services/{sname}?clear=full".format(
+            host=self.host.value, port=self.port.value, path=self.path.value, sname=self.sname
         )
         c = requests.delete(request)
         logging.info(
@@ -238,8 +238,8 @@ class MLWidget(object):
             )
         )
         c = requests.put(
-            "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname
+            "http://{host}:{port}/{path}/services/{sname}".format(
+                host=host, port=port, path=self.path.value, sname=self.sname
             ),
             json.dumps(body),
         )
@@ -268,13 +268,13 @@ class MLWidget(object):
         body = self._create_service_body()
 
         logging.info(
-            "Sending request http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname
+            "Sending request http://{host}:{port}/{path}/services/{sname}".format(
+                host=host, port=port, path=self.path.value, sname=self.sname
             )
         )
         c = requests.get(
-            "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname
+            "http://{host}:{port}/{path}/services/{sname}".format(
+                host=host, port=port, path=self.path.value, sname=self.sname
             )
         )
         logging.info(
@@ -297,8 +297,8 @@ class MLWidget(object):
             )
         )
         c = requests.put(
-            "http://{host}:{port}/services/{sname}".format(
-                host=host, port=port, sname=self.sname
+            "http://{host}:{port}/{path}/services/{sname}".format(
+                host=host, port=port, path=self.path.value, sname=self.sname
             ),
             json.dumps(body),
         )
@@ -325,7 +325,7 @@ class MLWidget(object):
             )
         )
         c = requests.post(
-            "http://{host}:{port}/train".format(host=host, port=port),
+            "http://{host}:{port}/{path}/train".format(host=host, port=port, path=self.path.value),
             json.dumps(body),
         )
         logging.info(
@@ -359,9 +359,9 @@ class MLWidget(object):
     def info(self, *_):
         # TODO job number
         request = (
-            "http://{host}:{port}/train?service={sname}&"
+            "http://{host}:{port}/{path}/train?service={sname}&"
             "job=1&timeout=10".format(
-                host=self.host.value, port=self.port.value, sname=self.sname
+                host=self.host.value, port=self.port.value, path=self.path.value, sname=self.sname
             )
         )
         c = requests.get(request)
@@ -433,6 +433,7 @@ class Classification(MLWidget, ImageTrainerMixin):
         testing_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        path: str = "",
         nclasses: int = -1,
         description: str = "classification service",
         model_repo: Optional[str] = None,
@@ -552,6 +553,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         testing_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        path: str = "",
         nclasses: int = -1,
         description: str = "Segmentation service",
         model_repo: Optional[str] = None,
@@ -702,6 +704,7 @@ class Detection(MLWidget, ImageTrainerMixin):
         testing_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        path: str = "",
         nclasses: int = -1,
         description: str = "Detection service",
         model_repo: Optional[str] = None,
@@ -793,6 +796,7 @@ class CSV(MLWidget):
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        path: str = "",
         tsplit: float = 0.01,
         base_lr: float = 0.01,
         iterations: int = 100,
@@ -959,6 +963,7 @@ class Text(MLWidget):
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        path: str = "",
         db: bool = False,
         nclasses: int = -1,
         layers: List[str] = [],
