@@ -20,9 +20,11 @@ import cv2
 import pandas as pd
 import requests
 from core import ImageTrainerMixin
+from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntProgress,
+                        IntText, Layout, Output, SelectMultiple, Tab)
+from ipywidgets import Text as TextWidget
+from ipywidgets import VBox
 from loghandler import OutputWidgetHandler
-from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText, IntProgress, Tab,
-                        Layout, Output, SelectMultiple, Text as TextWidget, HBox, VBox)
 
 # fmt: on
 
@@ -31,14 +33,14 @@ from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText, IntPro
 fmt = "%(asctime)s:%(msecs)d - %(levelname)s"
 fmt += " - {%(filename)s:%(lineno)d} %(message)s"
 
-file_handler = logging.FileHandler('widgets.log' )
+file_handler = logging.FileHandler("widgets.log")
 widget_output_handler = OutputWidgetHandler()
 
 logging.basicConfig(
     format=fmt,
     level=logging.DEBUG,
     datefmt="%m-%d %H:%M:%S",
-    handlers=[file_handler, widget_output_handler]
+    handlers=[file_handler, widget_output_handler],
 )
 
 logging.info("Creating widgets.log file")
@@ -105,19 +107,14 @@ class MLWidget(object):
         fun = self.__init__  # type: ignore
         typing_dict = get_type_hints(fun)
         for param in signature(fun).parameters.values():
-            if param.name != 'sname':
+            if param.name != "sname":
                 yield (
                     param.name,
                     eval(param.name, local_vars),
                     typing_dict[param.name],
                 )
 
-    def __init__(
-        self,
-        sname: str,
-        local_vars: Dict[str, Any],
-        *args
-    ) -> None:
+    def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
         # logger.addHandler(log_viewer(self.output),)
 
@@ -150,24 +147,19 @@ class MLWidget(object):
         self._configuration = VBox(
             self._widgets, layout=Layout(min_width="250px")
         )
-        
-        self._tabs = Tab(layout=Layout(height="800px"),)
+
+        self._tabs = Tab(layout=Layout(height="800px"))
         self._output = VBox([self.pbar, self._tabs])
         self._main_elt = HBox(
-            [self._configuration, self._output],
-            layout=Layout(width="900px"),
+            [self._configuration, self._output], layout=Layout(width="900px")
         )
         self._img_explorer = VBox(
-            [
-                self.output,
-            ],
-            layout=Layout(width="650px", height='800px'),
+            [self.output], layout=Layout(width="650px", height="800px")
         )
-            
+
         self._tabs.children = [self._img_explorer, widget_output_handler.out]
-        self._tabs.set_title(0, 'Exploration')
-        self._tabs.set_title(1, 'Logs')
-  
+        self._tabs.set_title(0, "Exploration")
+        self._tabs.set_title(1, "Logs")
 
     def _add_widget(self, name, value, type_hint):
 
@@ -180,7 +172,7 @@ class MLWidget(object):
                 TextWidget(  # Widget type by default then convert to str
                     value="" if value is None else str(value),
                     description=self._fields.get(name, name),
-                    layout=Layout(width='')
+                    layout=Layout(width=""),
                 ),
             )
         else:
@@ -190,7 +182,7 @@ class MLWidget(object):
                 widget_type(
                     value=type_hint() if value is None else type_hint(value),
                     description=self._fields.get(name, name),
-                    layout=Layout(width='')
+                    layout=Layout(width=""),
                 ),
             )
 
@@ -199,248 +191,270 @@ class MLWidget(object):
     def _ipython_display_(self):
         self._main_elt._ipython_display_()
 
-    # @output.capture(clear_output=True)
     def clear(self, *_):
-        request = "http://{host}:{port}/{path}/services/{sname}?clear=full".format(
-            host=self.host.value, port=self.port.value, path=self.path.value, sname=self.sname
-        )
-        c = requests.delete(request)
-        logging.info(
-            "Clearing (full) service {sname}: {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
+        self.output.clear()
+        with self.output:
+            request = "http://{host}:{port}/{path}/services/{sname}?clear=full".format(
+                host=self.host.value,
+                port=self.port.value,
+                path=self.path.value,
+                sname=self.sname,
             )
-        )
+            c = requests.delete(request)
+            logging.info(
+                "Clearing (full) service {sname}: {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
 
-        print(json.dumps(c.json(), indent=2))
-        return c.json()
+            print(json.dumps(c.json(), indent=2))
+            return c.json()
 
-    @output.capture(clear_output=True)
     def hardclear(self, *_):
         # The basic version
-        MLWidget.create_service(self)
-        self.clear()
-
-    # @output.capture(clear_output=True)
-    def create_service(self, *_):
-        host = self.host.value
-        port = self.port.value
-
-
-        body = OrderedDict(
-            [
-                ("mllib", "caffe"),
-                ("description", self.sname),
-                ("type", "supervised"),
-                (
-                    "parameters",
-                    {
-                        "mllib": {"nclasses": 42},  # why not?
-                        "input": {"connector": "csv"},
-                    },
-                ),
-                (
-                    "model",
-                    {
-                        "repository": self.model_repo.value,
-                        "create_repository": True,
-                        # "templates": "../templates/caffe/"
-                    },
-                ),
-            ]
-        )
-
-        logging.info(
-            "Creating service '{sname}':\n {body}".format(
-                sname=self.sname, body=json.dumps(body, indent=2)
-            )
-        )
-        c = requests.put(
-            "http://{host}:{port}/{path}/services/{sname}".format(
-                host=host, port=port, path=self.path.value, sname=self.sname
-            ),
-            json.dumps(body),
-        )
-
-        if c.json()["status"]["code"] != 201:
-            logging.warning(
-                "Reply from creating service '{sname}': {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-        else:
-            logging.info(
-                "Reply from creating service '{sname}': {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-
-        print(json.dumps(c.json(), indent=2))
-
-        return c.json()
-
-    @output.capture(clear_output=True)
-    def run(self, *_):
-        host = self.host.value
-        port = self.port.value
-        body = self._create_service_body()
-
-        logging.info(
-            "Sending request http://{host}:{port}/{path}/services/{sname}".format(
-                host=host, port=port, path=self.path.value, sname=self.sname
-            )
-        )
-        c = requests.get(
-            "http://{host}:{port}/{path}/services/{sname}".format(
-                host=host, port=port, path=self.path.value, sname=self.sname
-            )
-        )
-        logging.info(
-            "Current state of service '{sname}': {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
-            )
-        )
-        if c.json()["status"]["msg"] != "NotFound":
+        self.output.clear()
+        with self.output:
+            MLWidget.create_service(self)
             self.clear()
-            logging.warning(
-                (
-                    "Since service '{sname}' was still there, "
-                    "it has been fully cleared: {json}"
-                ).format(sname=self.sname, json=json.dumps(c.json(), indent=2))
+
+    def create_service(self, *_):
+        with self.output:
+            host = self.host.value
+            port = self.port.value
+
+            body = OrderedDict(
+                [
+                    ("mllib", "caffe"),
+                    ("description", self.sname),
+                    ("type", "supervised"),
+                    (
+                        "parameters",
+                        {
+                            "mllib": {"nclasses": 42},  # why not?
+                            "input": {"connector": "csv"},
+                        },
+                    ),
+                    (
+                        "model",
+                        {
+                            "repository": self.model_repo.value,
+                            "create_repository": True,
+                            # "templates": "../templates/caffe/"
+                        },
+                    ),
+                ]
             )
 
-        logging.info(
-            "Creating service '{sname}':\n {body}".format(
-                sname=self.sname, body=json.dumps(body, indent=2)
-            )
-        )
-        c = requests.put(
-            "http://{host}:{port}/{path}/services/{sname}".format(
-                host=host, port=port, path=self.path.value, sname=self.sname
-            ),
-            json.dumps(body),
-        )
-
-        if c.json()["status"]["code"] != 201:
-            logging.warning(
-                "Reply from creating service '{sname}': {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-            return
-        else:
             logging.info(
-                "Reply from creating service '{sname}': {json}".format(
+                "Creating service '{sname}':\n {body}".format(
+                    sname=self.sname, body=json.dumps(body, indent=2)
+                )
+            )
+            c = requests.put(
+                "http://{host}:{port}/{path}/services/{sname}".format(
+                    host=host, port=port, path=self.path.value, sname=self.sname
+                ),
+                json.dumps(body),
+            )
+
+            if c.json()["status"]["code"] != 201:
+                logging.warning(
+                    "Reply from creating service '{sname}': {json}".format(
+                        sname=self.sname, json=json.dumps(c.json(), indent=2)
+                    )
+                )
+            else:
+                logging.info(
+                    "Reply from creating service '{sname}': {json}".format(
+                        sname=self.sname, json=json.dumps(c.json(), indent=2)
+                    )
+                )
+
+            print(json.dumps(c.json(), indent=2))
+
+            return c.json()
+
+    def run(self, *_):
+        self.output.clear()
+
+        with self.output:
+            host = self.host.value
+            port = self.port.value
+            body = self._create_service_body()
+
+            logging.info(
+                "Sending request http://{host}:{port}/{path}/services/{sname}".format(
+                    host=host, port=port, path=self.path.value, sname=self.sname
+                )
+            )
+            c = requests.get(
+                "http://{host}:{port}/{path}/services/{sname}".format(
+                    host=host, port=port, path=self.path.value, sname=self.sname
+                )
+            )
+            logging.info(
+                "Current state of service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+            if c.json()["status"]["msg"] != "NotFound":
+                self.clear()
+                logging.warning(
+                    (
+                        "Since service '{sname}' was still there, "
+                        "it has been fully cleared: {json}"
+                    ).format(
+                        sname=self.sname, json=json.dumps(c.json(), indent=2)
+                    )
+                )
+
+            logging.info(
+                "Creating service '{sname}':\n {body}".format(
+                    sname=self.sname, body=json.dumps(body, indent=2)
+                )
+            )
+            c = requests.put(
+                "http://{host}:{port}/{path}/services/{sname}".format(
+                    host=host, port=port, path=self.path.value, sname=self.sname
+                ),
+                json.dumps(body),
+            )
+
+            if c.json()["status"]["code"] != 201:
+                logging.warning(
+                    "Reply from creating service '{sname}': {json}".format(
+                        sname=self.sname, json=json.dumps(c.json(), indent=2)
+                    )
+                )
+                return
+            else:
+                logging.info(
+                    "Reply from creating service '{sname}': {json}".format(
+                        sname=self.sname, json=json.dumps(c.json(), indent=2)
+                    )
+                )
+
+            body = self._train_body()
+
+            logging.info(
+                "Start training phase: {body}".format(
+                    body=json.dumps(body, indent=2)
+                )
+            )
+            c = requests.post(
+                "http://{host}:{port}/{path}/train".format(
+                    host=host, port=port, path=self.path.value
+                ),
+                json.dumps(body),
+            )
+            logging.info(
+                "Reply from training service '{sname}': {json}".format(
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
                 )
             )
 
-        body = self._train_body()
-        
-        logging.info(
-            "Start training phase: {body}".format(
-                body=json.dumps(body, indent=2)
-            )
-        )
-        c = requests.post(
-            "http://{host}:{port}/{path}/train".format(host=host, port=port, path=self.path.value),
-            json.dumps(body),
-        )
-        logging.info(
-            "Reply from training service '{sname}': {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
-            )
-        )
+            print(json.dumps(c.json(), indent=2))
 
-        print(json.dumps(c.json(), indent=2))
-        
-        self.value = self.iterations.value
-        self.pbar.bar_style = 'info'
-        self.pbar.max = self.iterations.value
-        
-        while True:
-            info = self.info()
-            self.pbar.bar_style = ''
-            
-            status = info['head']['status']
+            self.value = self.iterations.value
+            self.pbar.bar_style = "info"
+            self.pbar.max = self.iterations.value
 
-            if status == 'finished':
-                self.pbar.value = self.iterations.value
-                self.pbar.bar_style = 'success'
-                break
+            while True:
+                info = self.info()
+                self.pbar.bar_style = ""
 
-            self.pbar.value = info['body']['measure'].get('iteration', 0)
+                status = info["head"]["status"]
 
-            time.sleep(1)
+                if status == "finished":
+                    self.pbar.value = self.iterations.value
+                    self.pbar.bar_style = "success"
+                    break
 
-    @output.capture(clear_output=True)
+                self.pbar.value = info["body"]["measure"].get("iteration", 0)
+
+                time.sleep(1)
+
     def info(self, *_):
-        # TODO job number
-        request = (
-            "http://{host}:{port}/{path}/train?service={sname}&"
-            "job=1&timeout=10".format(
-                host=self.host.value, port=self.port.value, path=self.path.value, sname=self.sname
+        with self.output:
+            # TODO job number
+            request = (
+                "http://{host}:{port}/{path}/train?service={sname}&"
+                "job=1&timeout=10".format(
+                    host=self.host.value,
+                    port=self.port.value,
+                    path=self.path.value,
+                    sname=self.sname,
+                )
             )
-        )
-        c = requests.get(request)
-        logging.info(
-            "Getting info for service {sname}: {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            c = requests.get(request)
+            logging.info(
+                "Getting info for service {sname}: {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
             )
-        )
-        print(json.dumps(c.json(), indent=2))
-        return c.json()
+            print(json.dumps(c.json(), indent=2))
+            return c.json()
 
-    @output.capture(clear_output=True)
     def update_label_list(self, _):
-        if self.training_repo.value != "":
-            self.train_labels.options = tuple(
-                sorted(f.stem for f in Path(self.training_repo.value).glob("*"))
-            )
-        if self.testing_repo.value != "":
-            self.test_labels.options = tuple(
-                sorted(f.stem for f in Path(self.testing_repo.value).glob("*"))
-            )
+        with self.output:
+            if self.training_repo.value != "":
+                self.train_labels.options = tuple(
+                    sorted(
+                        f.stem for f in Path(self.training_repo.value).glob("*")
+                    )
+                )
+            if self.testing_repo.value != "":
+                self.test_labels.options = tuple(
+                    sorted(
+                        f.stem for f in Path(self.testing_repo.value).glob("*")
+                    )
+                )
 
-        self.train_labels.rows = min(10, len(self.train_labels.options))
-        self.test_labels.rows = min(10, len(self.test_labels.options))
-        if self.nclasses.value == -1:
-            self.nclasses.value = str(len(self.train_labels.options))
+            self.train_labels.rows = min(10, len(self.train_labels.options))
+            self.test_labels.rows = min(10, len(self.test_labels.options))
+            if self.nclasses.value == -1:
+                self.nclasses.value = str(len(self.train_labels.options))
 
 
 class Classification(MLWidget, ImageTrainerMixin):
-    @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
-        if len(self.train_labels.value) == 0:
-            return
-        directory = Path(self.training_repo.value) / self.train_labels.value[0]
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(directory.glob("**/*"), 10)
-        ]
-        self.test_labels.value = []
+        with self.output:
+            if len(self.train_labels.value) == 0:
+                return
+            directory = (
+                Path(self.training_repo.value) / self.train_labels.value[0]
+            )
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+            ]
+            self.test_labels.value = []
 
-    @MLWidget.output.capture(clear_output=True)
     def update_test_file_list(self, *args):
-        if len(self.test_labels.value) == 0:
-            return
-        directory = Path(self.testing_repo.value) / self.test_labels.value[0]
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(directory.glob("**/*"), 10)
-        ]
-        self.train_labels.value = []
+        with self.output:
+            if len(self.test_labels.value) == 0:
+                return
+            directory = (
+                Path(self.testing_repo.value) / self.test_labels.value[0]
+            )
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+            ]
+            self.train_labels.value = []
 
-    @MLWidget.output.capture(clear_output=True)
     def display_img(self, args):
-        for path in args["new"]:
-            shape, img = img_handle(Path(path))
-            if self.img_width.value == "":
-                self.img_width.value = str(shape[0])
-            if self.img_height.value == "":
-                self.img_height.value = str(shape[1])
-            display(
-                img
-            )  # TODO display next to each other with shape info as well
+        self.output.clear_output()
+        with self.output:
+            for path in args["new"]:
+                shape, img = img_handle(Path(path))
+                if self.img_width.value == "":
+                    self.img_width.value = str(shape[0])
+                if self.img_height.value == "":
+                    self.img_height.value = str(shape[1])
+                display(
+                    img
+                )  # TODO display next to each other with shape info as well
 
     def __init__(
         self,
@@ -515,15 +529,16 @@ class Classification(MLWidget, ImageTrainerMixin):
         self.test_labels.observe(self.update_test_file_list, names="value")
         self.file_list.observe(self.display_img, names="value")
 
-        
-        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list, self.output]
- 
+        self._img_explorer.children = [
+            HBox([HBox([self.train_labels, self.test_labels])]),
+            self.file_list,
+            self.output,
+        ]
+
         self.update_label_list(())
 
 
 class Segmentation(MLWidget, ImageTrainerMixin):
-
     def update_train_file_list(self, *args):
         with self.output:
             # print (Path(self.training_repo.value).read_text().split('\n'))
@@ -626,9 +641,11 @@ class Segmentation(MLWidget, ImageTrainerMixin):
 
         self.file_list.observe(self.display_img, names="value")
 
-        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list, self.output]
-        
+        self._img_explorer.children = [
+            HBox([HBox([self.train_labels, self.test_labels])]),
+            self.file_list,
+            self.output,
+        ]
 
         self.update_label_list(())
 
@@ -652,46 +669,43 @@ class Segmentation(MLWidget, ImageTrainerMixin):
 
 
 class Detection(MLWidget, ImageTrainerMixin):
-    
-    #nclasses=3 # default unused parameters go here
-    @MLWidget.output.capture(clear_output=True)
     def display_img(self, args):
-        for path in args["new"]:
-            shape, img = img_handle(Path(path))
-            if self.img_width.value == "":
-                self.img_width.value = str(shape[0])
-            if self.img_height.value == "":
-                self.img_height.value = str(shape[1])
-            _, img = img_handle(Path(path), bbox=self.file_dict[Path(path)])
-            display(img)
+        self.output.clear_output()
+        with self.output:
+            for path in args["new"]:
+                shape, img = img_handle(Path(path))
+                if self.img_width.value == "":
+                    self.img_width.value = str(shape[0])
+                if self.img_height.value == "":
+                    self.img_height.value = str(shape[1])
+                _, img = img_handle(Path(path), bbox=self.file_dict[Path(path)])
+                display(img)
 
-    @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
-        # print (Path(self.training_repo.value).read_text().split('\n'))
-        self.file_dict = {
-            Path(x.split()[0]): Path(x.split()[1])
-            for x in Path(self.training_repo.value).read_text().split("\n")
-            if len(x.split()) >= 2
-        }
+        with self.output:
+            self.file_dict = {
+                Path(x.split()[0]): Path(x.split()[1])
+                for x in Path(self.training_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
 
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(self.file_dict.keys(), 10)
-        ]
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
 
-    @MLWidget.output.capture(clear_output=True)
     def update_test_file_list(self, *args):
-        # print (Path(self.training_repo.value).read_text().split('\n'))
-        self.file_dict = {
-            Path(x.split()[0]): Path(x.split()[1])
-            for x in Path(self.testing_repo.value).read_text().split("\n")
-            if len(x.split()) >= 2
-        }
+        with self.output:
+            self.file_dict = {
+                Path(x.split()[0]): Path(x.split()[1])
+                for x in Path(self.testing_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
 
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(self.file_dict.keys(), 10)
-        ]
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
 
     def __init__(
         self,
@@ -765,8 +779,11 @@ class Detection(MLWidget, ImageTrainerMixin):
 
         self.file_list.observe(self.display_img, names="value")
 
-        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list, self.output]
+        self._img_explorer.children = [
+            HBox([HBox([self.train_labels, self.test_labels])]),
+            self.file_list,
+            self.output,
+        ]
 
         self.update_label_list(())
 
@@ -812,7 +829,7 @@ class CSV(MLWidget):
         shuffle: bool = True,
         solver_type: str = "AMSGRAD",
         target_repository: str = ""
-    ):
+    ) -> None:
 
         super().__init__(sname, locals())
 
@@ -820,7 +837,6 @@ class CSV(MLWidget):
             value=pd.read_csv(training_repo).sample(5)._repr_html_()
         )
         self._img_explorer.children = [self._displays, self.output]
-
 
     def _create_service_body(self):
         body = OrderedDict(
@@ -841,7 +857,6 @@ class CSV(MLWidget):
                             "nclasses": self.nclasses.value,
                             "activation": self.activation.value,
                             "db": False,
-                            "template":self.template.value,
                             "layers": eval(self.layers.value),
                         },
                     },
@@ -922,7 +937,8 @@ class CSV(MLWidget):
             body["parameters"]["output"]["measure"].append("auc")
 
         return body
-            
+
+
 class Text(MLWidget):
     def __init__(
         self,
@@ -960,7 +976,7 @@ class Text(MLWidget):
         activation: str = "relu",
         embedding: bool = False,
         target_repository: str = ""
-    ):
+    ) -> None:
 
         super().__init__(sname, locals())
 
@@ -989,42 +1005,50 @@ class Text(MLWidget):
 
         self.update_label_list(())
 
-        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list, self.output]
+        self._img_explorer.children = [
+            HBox([HBox([self.train_labels, self.test_labels])]),
+            self.file_list,
+            self.output,
+        ]
 
         if self.characters:
             self.db = True
 
-    @MLWidget.output.capture(clear_output=True)
     def display_text(self, args):
-        for path in args["new"]:
-            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
-                for i, x in enumerate(fh.readlines()):
-                    if i == 20:
-                        break
-                    print(x.strip())
+        self.output.clear_output()
+        with self.output:
+            for path in args["new"]:
+                with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+                    for i, x in enumerate(fh.readlines()):
+                        if i == 20:
+                            break
+                        print(x.strip())
 
-    @MLWidget.output.capture(clear_output=True)
     def update_train_file_list(self, *args):
-        if len(self.train_labels.value) == 0:
-            return
-        directory = Path(self.training_repo.value) / self.train_labels.value[0]
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(directory.glob("**/*"), 10)
-        ]
-        self.test_labels.value = []
+        with self.output:
+            if len(self.train_labels.value) == 0:
+                return
+            directory = (
+                Path(self.training_repo.value) / self.train_labels.value[0]
+            )
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+            ]
+            self.test_labels.value = []
 
-    @MLWidget.output.capture(clear_output=True)
     def update_test_file_list(self, *args):
-        if len(self.test_labels.value) == 0:
-            return
-        directory = Path(self.testing_repo.value) / self.test_labels.value[0]
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(directory.glob("**/*"), 10)
-        ]
-        self.train_labels.value = []
+        with self.output:
+            if len(self.test_labels.value) == 0:
+                return
+            directory = (
+                Path(self.testing_repo.value) / self.test_labels.value[0]
+            )
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+            ]
+            self.train_labels.value = []
 
     def _create_service_body(self):
 
@@ -1043,7 +1067,7 @@ class Text(MLWidget):
                             "read_forward": self.read_forward.value,
                             "alphabet": self.alphabet.value,
                             "sparse": self.sparse.value,
-                            "embedding": self.embedding.value
+                            "embedding": self.embedding.value,
                         },
                         "mllib": {
                             "template": self.template.value,
@@ -1058,7 +1082,7 @@ class Text(MLWidget):
                     {
                         "templates": "../templates/caffe/",
                         "repository": self.model_repo.value,
-                        "create_repository": True
+                        "create_repository": True,
                     },
                 ),
             ]
@@ -1081,7 +1105,7 @@ class Text(MLWidget):
                                 "test_interval": self.test_interval.value,
                                 "test_initialization": False,
                                 "base_lr": self.base_lr.value,
-                                "solver_type": self.solver_type.value
+                                "solver_type": self.solver_type.value,
                             },
                             "net": {"batch_size": self.batch_size.value},
                         },
@@ -1098,7 +1122,7 @@ class Text(MLWidget):
                             "read_forward": self.read_forward.value,
                             "alphabet": self.alphabet.value,
                             "embedding": self.embedding.value,
-                            "db": self.db.value
+                            "db": self.db.value,
                         },
                         "output": {"measure": ["mcll", "f1", "cmdiag"]},
                     },

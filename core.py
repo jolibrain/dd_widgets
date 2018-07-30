@@ -2,10 +2,8 @@ import json
 import logging
 import os
 import shutil
+from collections import OrderedDict
 from pathlib import Path
-import sys
-
-import requests
 
 
 class ImageTrainerMixin:
@@ -51,7 +49,7 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Detection":
             parameters_input["bbox"] = True
-            
+
         if self.__class__.__name__ == "Segmentation":
             parameters_input["segmentation"] = True
 
@@ -133,17 +131,25 @@ class ImageTrainerMixin:
         # pserv = dd.put_service(self.sname.value,model,description,mllib,
         #                       parameters_input,parameters_mllib,parameters_output)
 
-        body = {  # typing: Dict[str, Any]
-            "description": description,
-            "mllib": mllib,
-            "type": "supervised",
-            "parameters": {
-                "input": parameters_input,
-                "mllib": parameters_mllib,
-                "output": parameters_output,
-            },
-            "model": model,
-        }
+        body = OrderedDict(
+            [  # typing: Dict[str, Any]
+                ("description", description),
+                ("mllib", mllib),
+                ("type", "supervised"),
+                (
+                    "parameters",
+                    {
+                        "input",
+                        parameters_input,
+                        "mllib",
+                        parameters_mllib,
+                        "output",
+                        parameters_output,
+                    },
+                ),
+                ("model", model),
+            ]
+        )
         return body
 
     def _train_body(self):
@@ -157,18 +163,18 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Segmentation":
             parameters_input["segmentation"] = True
-            
+
         if self.__class__.__name__ == "Detection":
             parameters_input["db_width"] = self.db_width.value
             parameters_input["db_height"] = self.db_height.value
-            
+
         if self.testing_repo.value != "":
             train_data.append(self.testing_repo.value)
             parameters_input["shuffle"] = True
 
         if self.multi_label.value:
             parameters_input["db"] = False
-            
+
         parameters_mllib = {
             "gpu": True,
             "gpuid": self.gpuid.value,
@@ -189,8 +195,7 @@ class ImageTrainerMixin:
         }
         if self.__class__.__name__ == "Detection":
             parameters_mllib["bbox"] = True
-            
-            
+
         # TODO: lr policy as arguments
         # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
         if self.rand_skip.value > 0 and self.resume.value:
@@ -201,7 +206,7 @@ class ImageTrainerMixin:
             parameters_mllib["ignore_label"] = self.ignore_label.value
         if self.timesteps.value:
             parameters_mllib["timesteps"] = self.timesteps.value
-        
+
         if self.__class__.__name__ == "Segmentation":
             parameters_output = {"measure": ["acc"]}
         elif self.__class__.__name__ == "Detection":
@@ -225,15 +230,21 @@ class ImageTrainerMixin:
             parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
 
         parameters_output["target_repository"] = ""
-            
-        body = {
-            "service": self.sname,
-            "async": True,
-            "parameters": {
-                "input": parameters_input,
-                "mllib": parameters_mllib,
-                "output": parameters_output,
-            },
-            "data": train_data,
-        }
+
+        body = OrderedDict(
+            [
+                ("service", self.sname),
+                ("async", True),
+                (
+                    "parameters",
+                    {
+                        "input": parameters_input,
+                        "mllib": parameters_mllib,
+                        "output": parameters_output,
+                    },
+                ),
+                ("data", train_data),
+            ]
+        )
+
         return body
