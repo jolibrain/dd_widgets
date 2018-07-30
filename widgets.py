@@ -20,8 +20,8 @@ import cv2
 import pandas as pd
 import requests
 from core import ImageTrainerMixin
-from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntProgress,
-                        IntText, Layout, Output, SelectMultiple, Tab)
+from ipywidgets import (HTML, Button, Checkbox, Dropdown, FloatText, HBox, IntProgress,
+                        IntText, Label, Layout, Output, SelectMultiple, Tab)
 from ipywidgets import Text as TextWidget
 from ipywidgets import VBox
 from loghandler import OutputWidgetHandler
@@ -85,7 +85,26 @@ Elt = TypeVar("Elt")
 def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
 
+from enum import Enum
 
+class Solver(Enum):
+    SGD = 'SGD'
+    ADAM = 'ADAM'
+    RMSPROP = 'RMSPROP'
+    AMSGRAD = 'AMSGRAD'
+    ADAGRAD = 'ADAGRAD'
+    ADADELTA = 'ADADELTA'
+    NESTEROV = 'NESTEROV'
+    
+class SolverDropdown(Dropdown):
+    def __init__(self, *args, **kwargs):
+        Dropdown.__init__(
+            self,
+            *args,
+            options=list(e.name for e in Solver),
+            **kwargs
+        )
+    
 # -- Core 'abstract' widget for many tasks
 
 
@@ -97,7 +116,8 @@ class MLWidget(object):
         "testing_repo": "Testing directory",
     }
 
-    _widget_type = {int: IntText, float: FloatText, bool: Checkbox}
+    _widget_type = {int: IntText, float: FloatText, bool: Checkbox,
+                   Solver: SolverDropdown}
 
     # host: TextWidget
     # port: TextWidget
@@ -119,7 +139,7 @@ class MLWidget(object):
 
         self.sname = sname
         self.output = Output(layout=Layout(max_width="650px"))
-        self.pbar = IntProgress(min=0, max=100, description="Progression:")
+        self.pbar = IntProgress(min=0, max=100, description="Progression:", layout= Layout(margin = '18px'))
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
@@ -147,18 +167,27 @@ class MLWidget(object):
             self._widgets, layout=Layout(min_width="250px")
         )
 
-        self._tabs = Tab(layout=Layout(height="800px"))
+        self._tabs = Tab(layout=Layout(height=""))
         self._output = VBox([self.pbar, self._tabs])
         self._main_elt = HBox(
-            [self._configuration, self._output], layout=Layout(width="900px")
+            [self._configuration, self._output], layout=Layout(width="1200px")
         )
         self._img_explorer = VBox(
-            [self.output], layout=Layout(width="650px", height="800px")
+            [self.output], layout=Layout(min_height="800px", width="590px")
         )
 
         self._tabs.children = [self._img_explorer, widget_output_handler.out]
         self._tabs.set_title(0, "Exploration")
         self._tabs.set_title(1, "Logs")
+        
+        self.file_list = SelectMultiple(
+            options=[],
+            value=[],
+            rows=10,
+            description="File list",
+            layout=Layout(height="200px", width="560px"),
+        )
+
 
     def _add_widget(self, name, value, type_hint):
 
@@ -170,22 +199,40 @@ class MLWidget(object):
                 name,
                 TextWidget(  # Widget type by default then convert to str
                     value="" if value is None else str(value),
-                    description=self._fields.get(name, name),
-                    layout=Layout(width=""),
+                    layout=Layout(
+                        min_width= '20ex',
+                        margin = '-2px 2px 4px 2px'
+                    )
                 ),
             )
+            self._widgets.append(VBox(
+            [
+                Label(self._fields.get(name, name) + ":",),
+                getattr(self, name)
+            ]))
         else:
             setattr(
                 self,
                 name,
                 widget_type(
-                    value=type_hint() if value is None else type_hint(value),
-                    description=self._fields.get(name, name),
-                    layout=Layout(width=""),
-                ),
+                    value=type_hint() if value is None else (value),
+                    layout=Layout(
+                        width='100px',
+                        margin = '4px 2px 4px 2px'
+                    ),
+                )
             )
 
-        self._widgets.append(getattr(self, name))
+            self._widgets.append(
+                HBox(
+                [
+                    Label(self._fields.get(name, name),
+                          layout=Layout(min_width="180px")),
+                    getattr(self, name)
+                ], layout=Layout(margin = '4px 2px 4px 2px'))
+                
+            
+            )
 
     def _ipython_display_(self):
         self._main_elt._ipython_display_()
@@ -488,7 +535,7 @@ class Classification(MLWidget, ImageTrainerMixin):
         batch_size: int = 32,
         test_batch_size: int = 16,
         iter_size: int = 1,
-        solver_type: str = "SGD",
+        solver_type: Solver = "SGD",
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         test_init: bool = False,
@@ -513,14 +560,6 @@ class Classification(MLWidget, ImageTrainerMixin):
 
         self.test_labels = SelectMultiple(
             options=[], value=[], description="Testing labels", disabled=False
-        )
-
-        self.file_list = SelectMultiple(
-            options=[],
-            value=[],
-            rows=10,
-            description="File list",
-            layout=Layout(height="200px"),
         )
 
         self.testing_repo.observe(self.update_label_list, names="value")
@@ -599,7 +638,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         batch_size: int = 32,
         test_batch_size: int = 16,
         iter_size: int = 1,
-        solver_type: str = "SGD",
+        solver_type: Solver = "SGD",
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         test_init: bool = False,
@@ -624,14 +663,6 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         )
         self.test_labels = Button(
             description=Path(self.testing_repo.value).name
-        )
-
-        self.file_list = SelectMultiple(
-            options=[],
-            value=[],
-            rows=10,
-            description="File list",
-            layout=Layout(height="200px", width="auto"),
         )
 
         # self.testing_repo.observe(self.update_test_button, names="value")
@@ -741,7 +772,7 @@ class Detection(MLWidget, ImageTrainerMixin):
         batch_size: int = 32,
         test_batch_size: int = 16,
         iter_size: int = 1,
-        solver_type: str = "SGD",
+        solver_type: Solver = "SGD",
         noise_prob: float = 0.001,
         distort_prob: float = 0.5,
         test_init: bool = False,
@@ -765,14 +796,6 @@ class Detection(MLWidget, ImageTrainerMixin):
         )
         self.test_labels = Button(
             description=Path(self.testing_repo.value).name
-        )
-
-        self.file_list = SelectMultiple(
-            options=[],
-            value=[],
-            rows=10,
-            description="File list",
-            layout=Layout(height="200px", width="auto"),
         )
 
         self.train_labels.on_click(self.update_train_file_list)
@@ -830,7 +853,7 @@ class CSV(MLWidget):
         csv_categoricals: List[str] = [],
         scale_pos_weight: float = 1.0,
         shuffle: bool = True,
-        solver_type: str = "AMSGRAD",
+        solver_type: Solver = "AMSGRAD",
         autoencoder: bool = False,
         target_repository: str = ""
     ) -> None:
@@ -968,7 +991,7 @@ class Text(MLWidget):
         iterations: int = 25000,
         test_interval: int = 1000,
         base_lr: float = 0.001,
-        solver_type: str = "SGD",
+        solver_type: Solver = "SGD",
         batch_size: int = 128,
         shuffle: bool = True,
         tsplit: float = 0.2,
@@ -996,14 +1019,6 @@ class Text(MLWidget):
 
         self.test_labels = SelectMultiple(
             options=[], value=[], description="Testing labels", disabled=False
-        )
-
-        self.file_list = SelectMultiple(
-            options=[],
-            value=[],
-            rows=10,
-            description="File list",
-            layout=Layout(height="200px"),
         )
 
         # self.testing_repo.observe(self.update_label_list, names="value")

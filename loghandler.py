@@ -8,7 +8,7 @@ class OutputWidgetHandler(logging.Handler):
 
     def __init__(self, *args, **kwargs):
         super(OutputWidgetHandler, self).__init__(*args, **kwargs)
-        layout = {"width": "650px", "height": "800px", "border": "none"}
+        layout = {"width": "590px", "height": "800px", "border": "none"}
         self.out = ipywidgets.Output(layout=layout)
 
     def emit(self, record):
