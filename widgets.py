@@ -57,7 +57,7 @@ def img_handle(
     ax.imshow(data)
     if segmentation is not None:
         data = cv2.imread(segmentation.as_posix(), cv2.IMREAD_UNCHANGED)
-        ax.imshow(data, alpha=.2)
+        ax.imshow(data, alpha=.8)
     if bbox is not None:
         with bbox.open("r") as fh:
             for line in fh.readlines():
