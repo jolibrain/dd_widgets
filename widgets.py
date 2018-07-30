@@ -20,29 +20,28 @@ import cv2
 import pandas as pd
 import requests
 from core import ImageTrainerMixin
-from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText, IntProgress,
+from loghandler import OutputWidgetHandler
+from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntText, IntProgress, Tab,
                         Layout, Output, SelectMultiple, Text as TextWidget, HBox, VBox)
 
 # fmt: on
 
 # -- Logging --
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 fmt = "%(asctime)s:%(msecs)d - %(levelname)s"
 fmt += " - {%(filename)s:%(lineno)d} %(message)s"
 
+file_handler = logging.FileHandler('widgets.log' )
+widget_output_handler = OutputWidgetHandler()
+
 logging.basicConfig(
-    level=logging.DEBUG,
     format=fmt,
+    level=logging.DEBUG,
     datefmt="%m-%d %H:%M:%S",
-    filename="widgets.log",
-    filemode="a",
+    handlers=[file_handler, widget_output_handler]
 )
 
 logging.info("Creating widgets.log file")
-
 
 # -- Basic tools --
 
@@ -124,7 +123,7 @@ class MLWidget(object):
 
         self.sname = sname
 
-        self.pbar = IntProgress(min=0, max=100)
+        self.pbar = IntProgress(min=0, max=100, description="Progression:")
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
@@ -151,6 +150,24 @@ class MLWidget(object):
         self._configuration = VBox(
             self._widgets, layout=Layout(min_width="250px")
         )
+        
+        self._tabs = Tab(layout=Layout(height="800px"),)
+        self._output = VBox([self.pbar, self._tabs])
+        self._main_elt = HBox(
+            [self._configuration, self._output],
+            layout=Layout(width="900px"),
+        )
+        self._img_explorer = VBox(
+            [
+                self.output,
+            ],
+            layout=Layout(width="650px", height='800px'),
+        )
+            
+        self._tabs.children = [self._img_explorer, widget_output_handler.out]
+        self._tabs.set_title(0, 'Exploration')
+        self._tabs.set_title(1, 'Logs')
+  
 
     def _add_widget(self, name, value, type_hint):
 
@@ -498,52 +515,42 @@ class Classification(MLWidget, ImageTrainerMixin):
         self.test_labels.observe(self.update_test_file_list, names="value")
         self.file_list.observe(self.display_img, names="value")
 
-        self._img_explorer = VBox(
-            [
-                self.pbar,
-                HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list,
-                self.output,
-            ],
-            layout=Layout(width="650px"),
-        )
-
-        self._main_elt = HBox(
-            [self._configuration, self._img_explorer],
-            layout=Layout(width="900px"),
-        )
-
+        
+        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
+                self.file_list, self.output]
+ 
         self.update_label_list(())
 
 
 class Segmentation(MLWidget, ImageTrainerMixin):
-    @MLWidget.output.capture(clear_output=True)
+
     def update_train_file_list(self, *args):
-        # print (Path(self.training_repo.value).read_text().split('\n'))
-        self.file_dict = {
-            Path(x.split()[0]): Path(x.split()[1])
-            for x in Path(self.training_repo.value).read_text().split("\n")
-            if len(x.split()) >= 2
-        }
+        with self.output:
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): Path(x.split()[1])
+                for x in Path(self.training_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
 
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(self.file_dict.keys(), 10)
-        ]
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
 
-    @MLWidget.output.capture(clear_output=True)
     def update_test_file_list(self, *args):
-        # print (Path(self.training_repo.value).read_text().split('\n'))
-        self.file_dict = {
-            Path(x.split()[0]): Path(x.split()[1])
-            for x in Path(self.testing_repo.value).read_text().split("\n")
-            if len(x.split()) >= 2
-        }
+        with self.output:
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): Path(x.split()[1])
+                for x in Path(self.testing_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
 
-        self.file_list.options = [
-            fh.as_posix()
-            for fh in sample_from_iterable(self.file_dict.keys(), 10)
-        ]
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
 
     def __init__(
         self,
@@ -619,39 +626,29 @@ class Segmentation(MLWidget, ImageTrainerMixin):
 
         self.file_list.observe(self.display_img, names="value")
 
-        self._img_explorer = VBox(
-            [
-                self.pbar,
-                HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list,
-                self.output,
-            ],
-            layout=Layout(width="650px"),
-        )
-
-        self._main_elt = HBox(
-            [self._configuration, self._img_explorer],
-            layout=Layout(width="900px"),
-        )
+        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
+                self.file_list, self.output]
+        
 
         self.update_label_list(())
 
-    @MLWidget.output.capture(clear_output=True)
     def display_img(self, args):
-        for path in args["new"]:
-            shape, img = img_handle(Path(path))
-            if self.img_width.value == "":
-                self.img_width.value = str(shape[0])
-            if self.img_height.value == "":
-                self.img_height.value = str(shape[1])
-            display(
-                img
-            )  # TODO display next to each other with shape info as well
-            _, img = img_handle(Path(path), self.file_dict[Path(path)])
-            display(img)
-            # display(Image(path))
-            # integrate THIS : https://github.com/alx/react-bounding-box
-            # (cv2.imread(self.file_dict[Path(path)].as_posix()))
+        self.output.clear_output()
+        with self.output:
+            for path in args["new"]:
+                shape, img = img_handle(Path(path))
+                if self.img_width.value == "":
+                    self.img_width.value = str(shape[0])
+                if self.img_height.value == "":
+                    self.img_height.value = str(shape[1])
+                display(
+                    img
+                )  # TODO display next to each other with shape info as well
+                _, img = img_handle(Path(path), self.file_dict[Path(path)])
+                display(img)
+                # display(Image(path))
+                # integrate THIS : https://github.com/alx/react-bounding-box
+                # (cv2.imread(self.file_dict[Path(path)].as_posix()))
 
 
 class Detection(MLWidget, ImageTrainerMixin):
@@ -768,20 +765,8 @@ class Detection(MLWidget, ImageTrainerMixin):
 
         self.file_list.observe(self.display_img, names="value")
 
-        self._img_explorer = VBox(
-            [
-                self.pbar,
-                HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list,
-                self.output,
-            ],
-            layout=Layout(width="650px"),
-        )
-
-        self._main_elt = HBox(
-            [self._configuration, self._img_explorer],
-            layout=Layout(width="900px"),
-        )
+        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
+                self.file_list, self.output]
 
         self.update_label_list(())
 
@@ -834,22 +819,8 @@ class CSV(MLWidget):
         self._displays = HTML(
             value=pd.read_csv(training_repo).sample(5)._repr_html_()
         )
+        self._img_explorer.children = [self._displays, self.output]
 
-        self._img_explorer = VBox(
-            [
-                # HBox([HBox([self.train_labels, self.test_labels])]),
-                # self.file_list,
-                self.pbar,
-                self._displays,
-                self.output,
-            ],
-            layout=Layout(width="650px"),
-        )
-
-        self._main_elt = HBox(
-            [self._configuration, self._img_explorer],
-            layout=Layout(width="900px"),
-        )
 
     def _create_service_body(self):
         body = OrderedDict(
@@ -1018,23 +989,11 @@ class Text(MLWidget):
 
         self.update_label_list(())
 
-        self._img_explorer = VBox(
-            [
-                self.pbar,
-                HBox([HBox([self.train_labels, self.test_labels])]),
-                self.file_list,
-                self.output,
-            ],
-            layout=Layout(width="650px"),
-        )
-
-        self._main_elt = HBox(
-            [self._configuration, self._img_explorer],
-            layout=Layout(width="900px"),
-        )
+        self._img_explorer.children = [HBox([HBox([self.train_labels, self.test_labels])]),
+                self.file_list, self.output]
 
         if self.characters:
-            self.db: True
+            self.db = True
 
     @MLWidget.output.capture(clear_output=True)
     def display_text(self, args):
