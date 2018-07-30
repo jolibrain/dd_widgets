@@ -795,6 +795,7 @@ class CSV(MLWidget):
         sname: str,
         *,
         training_repo: Path = None,
+        testing_repo: Path = None,
         description: str = "CSV service",
         model_repo: Path = None,
         host: str = "localhost",
@@ -808,6 +809,7 @@ class CSV(MLWidget):
         template: Optional[str] = None,
         layers: List[int] = [],
         activation: str = "relu",
+        db: bool = False,
         dropout: float = .2,
         destroy: bool = False,
         resume: bool = False,
@@ -820,15 +822,16 @@ class CSV(MLWidget):
         mllib: str = "caffe",
         lregression: bool = False,
         scale: bool = False,
-        csv_id: str,
+        csv_id: str = "",
         csv_separator: str = ",",
         csv_ignore: List[str] = [],
-        csv_label: str,
+        csv_label: str = "",
         csv_label_offset: int = -1,
         csv_categoricals: List[str] = [],
         scale_pos_weight: float = 1.0,
         shuffle: bool = True,
         solver_type: str = "AMSGRAD",
+        autoencoder: bool = False,
         target_repository: str = ""
     ) -> None:
 
@@ -851,14 +854,16 @@ class CSV(MLWidget):
                         "input": {
                             "connector": "csv",
                             "labels": self.csv_label.value,
-                            "db": False,
+                            "db": self.db.value,
                         },
                         "mllib": {
                             "template": self.template.value,
                             "nclasses": self.nclasses.value,
                             "activation": self.activation.value,
-                            "db": False,
+                            "db": self.db.value,
+                            "template":self.template.value,
                             "layers": eval(self.layers.value),
+                            "autoencoder": self.autoencoder.value
                         },
                     },
                 ),
@@ -906,7 +911,7 @@ class CSV(MLWidget):
                                 "test_interval": self.test_interval.value,
                                 "test_initialization": False,
                                 "base_lr": self.base_lr.value,
-                                "solver_type": self.solver_type.value,
+                                "solver_type": self.solver_type.value
                             },
                             "net": {
                                 "batch_size": self.batch_size.value,
@@ -921,22 +926,26 @@ class CSV(MLWidget):
                             "shuffle": self.shuffle.value,
                             "test_split": self.tsplit.value,
                             "scale": self.scale.value,
-                            "db": False,
+                            "db": self.db.value,
                             "ignore": eval(self.csv_ignore.value),
                             "categoricals": eval(self.csv_categoricals.value),
+                            "autoencoder": self.autoencoder.value
                         },
                         "output": {
                             "measure": ["cmdiag", "cmfull", "mcll", "f1"]
                         },
                     },
                 ),
-                ("data", [self.training_repo.value]),
+                ("data", [self.training_repo.value,self.testing_repo.value]),
             ]
         )
 
         if self.nclasses.value == 2:
             body["parameters"]["output"]["measure"].append("auc")
 
+        if self.autoencoder.value:
+            body["parameters"]["output"]["measure"] = ["eucll"]
+            
         return body
 
 
