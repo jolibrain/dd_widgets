@@ -5,6 +5,7 @@ import logging
 import random
 import time
 from collections import OrderedDict
+from enum import Enum
 from heapq import nlargest
 from inspect import signature
 from pathlib import Path
@@ -20,8 +21,9 @@ import cv2
 import pandas as pd
 import requests
 from core import ImageTrainerMixin
-from ipywidgets import (HTML, Button, Checkbox, Dropdown, FloatText, HBox, IntProgress,
-                        IntText, Label, Layout, Output, SelectMultiple, Tab)
+from ipywidgets import (HTML, Button, Checkbox, Dropdown, FloatText, HBox,
+                        IntProgress, IntText, Label, Layout, Output,
+                        SelectMultiple, Tab)
 from ipywidgets import Text as TextWidget
 from ipywidgets import VBox
 from loghandler import OutputWidgetHandler
@@ -85,26 +87,24 @@ Elt = TypeVar("Elt")
 def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
 
-from enum import Enum
 
 class Solver(Enum):
-    SGD = 'SGD'
-    ADAM = 'ADAM'
-    RMSPROP = 'RMSPROP'
-    AMSGRAD = 'AMSGRAD'
-    ADAGRAD = 'ADAGRAD'
-    ADADELTA = 'ADADELTA'
-    NESTEROV = 'NESTEROV'
-    
+    SGD = "SGD"
+    ADAM = "ADAM"
+    RMSPROP = "RMSPROP"
+    AMSGRAD = "AMSGRAD"
+    ADAGRAD = "ADAGRAD"
+    ADADELTA = "ADADELTA"
+    NESTEROV = "NESTEROV"
+
+
 class SolverDropdown(Dropdown):
     def __init__(self, *args, **kwargs):
         Dropdown.__init__(
-            self,
-            *args,
-            options=list(e.name for e in Solver),
-            **kwargs
+            self, *args, options=list(e.name for e in Solver), **kwargs
         )
-    
+
+
 # -- Core 'abstract' widget for many tasks
 
 
@@ -116,8 +116,12 @@ class MLWidget(object):
         "testing_repo": "Testing directory",
     }
 
-    _widget_type = {int: IntText, float: FloatText, bool: Checkbox,
-                   Solver: SolverDropdown}
+    _widget_type = {
+        int: IntText,
+        float: FloatText,
+        bool: Checkbox,
+        Solver: SolverDropdown,
+    }
 
     # host: TextWidget
     # port: TextWidget
@@ -139,7 +143,12 @@ class MLWidget(object):
 
         self.sname = sname
         self.output = Output(layout=Layout(max_width="650px"))
-        self.pbar = IntProgress(min=0, max=100, description="Progression:", layout= Layout(margin = '18px'))
+        self.pbar = IntProgress(
+            min=0,
+            max=100,
+            description="Progression:",
+            layout=Layout(margin="18px"),
+        )
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
         self.clear_button = Button(description="Clear")
@@ -179,7 +188,7 @@ class MLWidget(object):
         self._tabs.children = [self._img_explorer, widget_output_handler.out]
         self._tabs.set_title(0, "Exploration")
         self._tabs.set_title(1, "Logs")
-        
+
         self.file_list = SelectMultiple(
             options=[],
             value=[],
@@ -187,7 +196,6 @@ class MLWidget(object):
             description="File list",
             layout=Layout(height="200px", width="560px"),
         )
-
 
     def _add_widget(self, name, value, type_hint):
 
@@ -199,39 +207,38 @@ class MLWidget(object):
                 name,
                 TextWidget(  # Widget type by default then convert to str
                     value="" if value is None else str(value),
-                    layout=Layout(
-                        min_width= '20ex',
-                        margin = '-2px 2px 4px 2px'
-                    )
+                    layout=Layout(min_width="20ex", margin="-2px 2px 4px 2px"),
                 ),
             )
-            self._widgets.append(VBox(
-            [
-                Label(self._fields.get(name, name) + ":",),
-                getattr(self, name)
-            ]))
+            self._widgets.append(
+                VBox(
+                    [
+                        Label(self._fields.get(name, name) + ":"),
+                        getattr(self, name),
+                    ]
+                )
+            )
         else:
             setattr(
                 self,
                 name,
                 widget_type(
                     value=type_hint() if value is None else (value),
-                    layout=Layout(
-                        width='100px',
-                        margin = '4px 2px 4px 2px'
-                    ),
-                )
+                    layout=Layout(width="100px", margin="4px 2px 4px 2px"),
+                ),
             )
 
             self._widgets.append(
                 HBox(
-                [
-                    Label(self._fields.get(name, name),
-                          layout=Layout(min_width="180px")),
-                    getattr(self, name)
-                ], layout=Layout(margin = '4px 2px 4px 2px'))
-                
-            
+                    [
+                        Label(
+                            self._fields.get(name, name),
+                            layout=Layout(min_width="180px"),
+                        ),
+                        getattr(self, name),
+                    ],
+                    layout=Layout(margin="4px 2px 4px 2px"),
+                )
             )
 
     def _ipython_display_(self):
@@ -321,7 +328,7 @@ class MLWidget(object):
             return c.json()
 
     def run(self, *_):
-        logging.info('Entering run method')
+        logging.info("Entering run method")
         self.output.clear_output()
 
         with self.output:
@@ -884,9 +891,9 @@ class CSV(MLWidget):
                             "nclasses": self.nclasses.value,
                             "activation": self.activation.value,
                             "db": self.db.value,
-                            "template":self.template.value,
+                            "template": self.template.value,
                             "layers": eval(self.layers.value),
-                            "autoencoder": self.autoencoder.value
+                            "autoencoder": self.autoencoder.value,
                         },
                     },
                 ),
@@ -934,7 +941,7 @@ class CSV(MLWidget):
                                 "test_interval": self.test_interval.value,
                                 "test_initialization": False,
                                 "base_lr": self.base_lr.value,
-                                "solver_type": self.solver_type.value
+                                "solver_type": self.solver_type.value,
                             },
                             "net": {
                                 "batch_size": self.batch_size.value,
@@ -952,14 +959,14 @@ class CSV(MLWidget):
                             "db": self.db.value,
                             "ignore": eval(self.csv_ignore.value),
                             "categoricals": eval(self.csv_categoricals.value),
-                            "autoencoder": self.autoencoder.value
+                            "autoencoder": self.autoencoder.value,
                         },
                         "output": {
                             "measure": ["cmdiag", "cmfull", "mcll", "f1"]
                         },
                     },
                 ),
-                ("data", [self.training_repo.value,self.testing_repo.value]),
+                ("data", [self.training_repo.value, self.testing_repo.value]),
             ]
         )
 
@@ -968,7 +975,7 @@ class CSV(MLWidget):
 
         if self.autoencoder.value:
             body["parameters"]["output"]["measure"] = ["eucll"]
-            
+
         return body
 
 
