@@ -56,7 +56,7 @@ class ImageTrainerMixin:
         if self.multi_label.value:
             parameters_input["multi_label"] = True
             parameters_input["db"] = False
-        if self.ctc.value:
+        if self.ctc:
             parameters_input["ctc"] = True
 
         logging.info(
@@ -221,7 +221,7 @@ class ImageTrainerMixin:
                     "eucll",
                 ]
             }
-        elif self.ctc.value:
+        elif self.ctc:
             parameters_output = {"measure": ["acc"]}
         else:
             parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
