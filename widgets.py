@@ -99,7 +99,6 @@ class MLWidget(object):
 
     _widget_type = {int: IntText, float: FloatText, bool: Checkbox}
 
-    output = Output(layout=Layout(max_width="650px"))  # typing: Output
     # host: TextWidget
     # port: TextWidget
 
@@ -119,7 +118,7 @@ class MLWidget(object):
         # logger.addHandler(log_viewer(self.output),)
 
         self.sname = sname
-
+        self.output = Output(layout=Layout(max_width="650px"))
         self.pbar = IntProgress(min=0, max=100, description="Progression:")
         self.run_button = Button(description="Run")
         self.info_button = Button(description="Info")
@@ -192,7 +191,7 @@ class MLWidget(object):
         self._main_elt._ipython_display_()
 
     def clear(self, *_):
-        self.output.clear()
+        self.output.clear_output()
         with self.output:
             request = "http://{host}:{port}/{path}/services/{sname}?clear=full".format(
                 host=self.host.value,
@@ -212,7 +211,7 @@ class MLWidget(object):
 
     def hardclear(self, *_):
         # The basic version
-        self.output.clear()
+        self.output.clear_output()
         with self.output:
             MLWidget.create_service(self)
             self.clear()
@@ -275,7 +274,8 @@ class MLWidget(object):
             return c.json()
 
     def run(self, *_):
-        self.output.clear()
+        logging.info('Entering run method')
+        self.output.clear_output()
 
         with self.output:
             host = self.host.value
@@ -360,7 +360,7 @@ class MLWidget(object):
             self.pbar.max = self.iterations.value
 
             while True:
-                info = self.info()
+                info = self.info(print_output=False)
                 self.pbar.bar_style = ""
 
                 status = info["head"]["status"]
@@ -374,7 +374,7 @@ class MLWidget(object):
 
                 time.sleep(1)
 
-    def info(self, *_):
+    def info(self, print_output=True):
         with self.output:
             # TODO job number
             request = (
@@ -392,7 +392,8 @@ class MLWidget(object):
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
                 )
             )
-            print(json.dumps(c.json(), indent=2))
+            if print_output:
+                print(json.dumps(c.json(), indent=2))
             return c.json()
 
     def update_label_list(self, _):

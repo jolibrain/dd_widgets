@@ -139,12 +139,9 @@ class ImageTrainerMixin:
                 (
                     "parameters",
                     {
-                        "input",
-                        parameters_input,
-                        "mllib",
-                        parameters_mllib,
-                        "output",
-                        parameters_output,
+                        "input": parameters_input,
+                        "mllib": parameters_mllib,
+                        "output": parameters_output,
                     },
                 ),
                 ("model", model),
