@@ -172,6 +172,10 @@ class ImageTrainerMixin:
         if self.multi_label.value:
             parameters_input["db"] = False
 
+        if self.ctc.value:
+            if self.align.value:
+                parameters_input["align"] = True
+            
         parameters_mllib = {
             "gpu": True,
             "gpuid": self.gpuid.value,

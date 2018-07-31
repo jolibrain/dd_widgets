@@ -1255,7 +1255,8 @@ class OCR(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         timesteps: int = 32,
         unchanged_data: bool = False,
-        target_repository: str = ""
+        target_repository: str = "",
+        align: bool = False
     ) -> None:
 
         super().__init__(sname, locals())
