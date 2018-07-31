@@ -56,7 +56,7 @@ class ImageTrainerMixin:
         if self.multi_label.value:
             parameters_input["multi_label"] = True
             parameters_input["db"] = False
-        if self.ctc:
+        if self.ctc.value:
             parameters_input["ctc"] = True
 
         logging.info(
@@ -119,12 +119,15 @@ class ImageTrainerMixin:
         if self.regression.value:
             parameters_mllib["regression"] = True
 
+        if self.__class__.__name__ == "Segmentation":
+            parameters_mllib["loss"] = self.loss.value
+            
         logging.info(
             "Parameters mllib: {}".format(
                 json.dumps(parameters_input, indent=2)
             )
         )
-
+        
         parameters_output = {}
         # print (parameters_input)
         # print (parameters_mllib)
@@ -196,7 +199,7 @@ class ImageTrainerMixin:
         }
         if self.__class__.__name__ == "Detection":
             parameters_mllib["bbox"] = True
-
+            
         # TODO: lr policy as arguments
         # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
         if self.rand_skip.value > 0 and self.resume.value:

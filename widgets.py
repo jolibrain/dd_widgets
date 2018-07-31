@@ -556,6 +556,7 @@ class Classification(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         timesteps: int = 32,
         unchanged_data: bool = False,
+        ctc: bool = False,
         target_repository: str = ""
     ) -> None:
 
@@ -586,7 +587,6 @@ class Classification(MLWidget, ImageTrainerMixin):
 
 
 class Segmentation(MLWidget, ImageTrainerMixin):
-    ctc = False
     def update_train_file_list(self, *args):
         with self.output:
             # print (Path(self.training_repo.value).read_text().split('\n'))
@@ -660,7 +660,9 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         timesteps: int = 32,
         unchanged_data: bool = False,
-        target_repository: str = ""
+        ctc: bool = False,
+        target_repository: str = "",
+        loss: str = ""
     ) -> None:
 
         super().__init__(sname, locals())
