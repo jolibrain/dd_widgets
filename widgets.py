@@ -352,7 +352,7 @@ class MLWidget(object):
                 )
             )
             if c.json()["status"]["msg"] != "NotFound":
-                self.clear()
+                #self.clear()
                 logging.warning(
                     (
                         "Since service '{sname}' was still there, "
