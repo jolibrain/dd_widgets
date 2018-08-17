@@ -795,7 +795,8 @@ class Detection(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         timesteps: int = 32,
         unchanged_data: bool = False,
-        target_repository: str = ""
+        target_repository: str = "",
+        ctc: bool = False    
     ) -> None:
 
         super().__init__(sname, locals())
