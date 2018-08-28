@@ -533,6 +533,9 @@ class Classification(MLWidget, ImageTrainerMixin):
         gpuid: int = 0,
         layers: List[str] = [],
         template: Optional[str] = None,
+        activation: Optional[str] = "relu",
+        dropout: float = 0.0,
+        autoencoder: bool = False,
         mirror: bool = False,
         rotate: bool = False,
         tsplit: float = 0.0,
@@ -1047,7 +1050,7 @@ class Text(MLWidget):
         ]
 
         if self.characters:
-            self.db = True
+            self.db.value = True
 
     def display_text(self, args):
         self.output.clear_output()

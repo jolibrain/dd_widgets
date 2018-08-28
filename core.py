@@ -74,6 +74,9 @@ class ImageTrainerMixin:
                     "mirror": self.mirror.value,
                     "layers": eval(self.layers.value),  # List of strings
                     "db": True,
+                    "activation": self.activation.value,
+                    "dropout": self.dropout.value,
+                    "autoencoder": self.autoencoder.value
                 }
             else:
                 parameters_mllib = {
