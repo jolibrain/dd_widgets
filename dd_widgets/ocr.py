@@ -3,40 +3,43 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from ipywidgets import HBox, SelectMultiple
+from ipywidgets import HBox, Button
 
 from .core import ImageTrainerMixin, img_handle, sample_from_iterable
 from .widgets import MLWidget, Solver
 
 
-class Classification(MLWidget, ImageTrainerMixin):
-    ctc = False
+class OCR(MLWidget, ImageTrainerMixin):
+
+    ctc = True
 
     def update_train_file_list(self, *args):
         with self.output:
-            if len(self.train_labels.value) == 0:
-                return
-            directory = (
-                Path(self.training_repo.value) / self.train_labels.value[0]
-            )
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): x.split()[1:]
+                for x in Path(self.training_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
+
             self.file_list.options = [
                 fh.as_posix()
-                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
-            self.test_labels.value = []
 
     def update_test_file_list(self, *args):
         with self.output:
-            if len(self.test_labels.value) == 0:
-                return
-            directory = (
-                Path(self.testing_repo.value) / self.test_labels.value[0]
-            )
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): x.split()[1:]
+                for x in Path(self.testing_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
+
             self.file_list.options = [
                 fh.as_posix()
-                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
-            self.train_labels.value = []
 
     def display_img(self, args):
         self.output.clear_output()
@@ -50,6 +53,7 @@ class Classification(MLWidget, ImageTrainerMixin):
                 display(
                     img
                 )  # TODO display next to each other with shape info as well
+                print(" ".join(self.file_dict[Path(path)]))
 
     def __init__(
         self,
@@ -61,7 +65,7 @@ class Classification(MLWidget, ImageTrainerMixin):
         port: int = 1234,
         path: str = "",
         nclasses: int = -1,
-        description: str = "classification service",
+        description: str = "OCR service",
         model_repo: Optional[str] = None,
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
@@ -72,12 +76,8 @@ class Classification(MLWidget, ImageTrainerMixin):
         gpuid: int = 0,
         layers: List[str] = [],
         template: Optional[str] = None,
-        activation: Optional[str] = "relu",
-        dropout: float = 0.0,
-        autoencoder: bool = False,
         mirror: bool = False,
         rotate: bool = False,
-        scale: float = 1.0,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,
@@ -99,29 +99,25 @@ class Classification(MLWidget, ImageTrainerMixin):
         rand_skip: int = 0,
         timesteps: int = 32,
         unchanged_data: bool = False,
-        ctc: bool = False,
-        target_repository: str = ""
+        target_repository: str = "",
+        align: bool = False
     ) -> None:
 
         super().__init__(sname, locals())
 
-        self.train_labels = SelectMultiple(
-            options=[], value=[], description="Training labels", disabled=False
+        self.train_labels = Button(
+            description=Path(self.training_repo.value).name  # type: ignore
+        )
+        self.test_labels = Button(
+            description=Path(self.testing_repo.value).name  # type: ignore
         )
 
-        self.test_labels = SelectMultiple(
-            options=[], value=[], description="Testing labels", disabled=False
-        )
+        # self.testing_repo.observe(self.update_test_button, names="value")
+        # self.training_repo.observe(self.update_train_button, names="value")
 
-        self.testing_repo.observe(  # type: ignore
-            self.update_label_list, names="value"
-        )
-        self.training_repo.observe(  # type: ignore
-            self.update_label_list, names="value"
-        )
+        self.train_labels.on_click(self.update_train_file_list)
+        self.test_labels.on_click(self.update_test_file_list)
 
-        self.train_labels.observe(self.update_train_file_list, names="value")
-        self.test_labels.observe(self.update_test_file_list, names="value")
         self.file_list.observe(self.display_img, names="value")
 
         self._img_explorer.children = [
@@ -130,4 +126,4 @@ class Classification(MLWidget, ImageTrainerMixin):
             self.output,
         ]
 
-        self.update_label_list(())
+        # self.update_label_list(())
