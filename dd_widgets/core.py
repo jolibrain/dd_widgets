@@ -1,9 +1,19 @@
 import json
 import logging
 import os
+import random
 import shutil
 from collections import OrderedDict
+from heapq import nlargest
 from pathlib import Path
+from tempfile import mkstemp
+from typing import Iterator, Optional, Tuple, TypeVar
+
+import matplotlib.pyplot as plt
+from IPython.display import Image
+from matplotlib import patches
+
+import cv2
 
 
 class ImageTrainerMixin:
@@ -77,7 +87,7 @@ class ImageTrainerMixin:
                     "db": True,
                     "activation": self.activation.value,
                     "dropout": self.dropout.value,
-                    "autoencoder": self.autoencoder.value
+                    "autoencoder": self.autoencoder.value,
                 }
             else:
                 parameters_mllib = {
@@ -100,7 +110,7 @@ class ImageTrainerMixin:
                     "db": True,
                     "activation": self.activation.value,
                     "dropout": self.dropout.value,
-                    "autoencoder": self.autoencoder.value
+                    "autoencoder": self.autoencoder.value,
                 }
             else:
                 parameters_mllib = {
@@ -133,13 +143,13 @@ class ImageTrainerMixin:
 
         if self.__class__.__name__ == "Segmentation":
             parameters_mllib["loss"] = self.loss.value
-            
+
         logging.info(
             "Parameters mllib: {}".format(
                 json.dumps(parameters_input, indent=2)
             )
         )
-        
+
         parameters_output = {}
         # print (parameters_input)
         # print (parameters_mllib)
@@ -190,7 +200,7 @@ class ImageTrainerMixin:
         if self.ctc.value:
             if self.align.value:
                 parameters_input["align"] = True
-            
+
         parameters_mllib = {
             "gpu": True,
             "gpuid": self.gpuid.value,
@@ -211,7 +221,7 @@ class ImageTrainerMixin:
         }
         if self.__class__.__name__ == "Detection":
             parameters_mllib["bbox"] = True
-            
+
         # TODO: lr policy as arguments
         # 'lr_policy':'step','stepsize':2000,'gamma':0.1,'snapshot':4000,'base_lr':args.base_lr,'solver_type':'SGD'}}
         if self.rand_skip.value > 0 and self.resume.value:
@@ -264,3 +274,41 @@ class ImageTrainerMixin:
         )
 
         return body
+
+
+Elt = TypeVar("Elt")
+
+
+def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
+    return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
+
+
+def img_handle(
+    path: Path, segmentation: Optional[Path] = None, bbox: Optional[Path] = None
+) -> Tuple[Tuple[int, ...], Image]:
+    data = cv2.imread(path.as_posix(), cv2.IMREAD_UNCHANGED)
+    _, fname = mkstemp(suffix=".png")
+    fig, ax = plt.subplots()
+    ax.imshow(data)
+    if segmentation is not None:
+        data = cv2.imread(segmentation.as_posix(), cv2.IMREAD_UNCHANGED)
+        ax.imshow(data, alpha=.8)
+    if bbox is not None:
+        with bbox.open("r") as fh:
+            for line in fh.readlines():
+                tag, xmin, ymin, xmax, ymax = (
+                    int(x) for x in line.strip().split()
+                )
+                rect = patches.Rectangle(
+                    (xmin, ymin),
+                    xmax - xmin,
+                    ymax - ymin,
+                    linewidth=2,
+                    edgecolor="blue",
+                    facecolor="none",
+                )
+                ax.add_patch(rect)
+
+    fig.savefig(fname)
+    plt.close(fig)
+    return data.shape, Image(fname)

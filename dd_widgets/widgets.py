@@ -2,90 +2,29 @@
 
 import json
 import logging
-import random
 import time
 from collections import OrderedDict
 from enum import Enum
-from heapq import nlargest
 from inspect import signature
 from pathlib import Path
-from tempfile import mkstemp
-from typing import (Any, Dict, Iterator, List, Optional, Tuple, TypeVar,
-                    get_type_hints)
+from typing import Any, Dict, List, Optional, get_type_hints
 
-import matplotlib.pyplot as plt
-from IPython.display import Image, display
-from matplotlib import patches
-
-import cv2
 import pandas as pd
 import requests
-from core import ImageTrainerMixin
 from ipywidgets import (HTML, Button, Checkbox, Dropdown, FloatText, HBox,
                         IntProgress, IntText, Label, Layout, Output,
                         SelectMultiple, Tab)
 from ipywidgets import Text as TextWidget
 from ipywidgets import VBox
-from loghandler import OutputWidgetHandler
+
+from .core import ImageTrainerMixin
+from .loghandler import OutputWidgetHandler
 
 # fmt: on
 
-# -- Logging --
-
-fmt = "%(asctime)s:%(msecs)d - %(levelname)s"
-fmt += " - {%(filename)s:%(lineno)d} %(message)s"
-
-file_handler = logging.FileHandler("widgets.log")
-widget_output_handler = OutputWidgetHandler()
-
-logging.basicConfig(
-    format=fmt,
-    level=logging.DEBUG,
-    datefmt="%m-%d %H:%M:%S",
-    handlers=[file_handler, widget_output_handler],
-)
-
-logging.info("Creating widgets.log file")
-
 # -- Basic tools --
 
-
-def img_handle(
-    path: Path, segmentation: Optional[Path] = None, bbox: Optional[Path] = None
-) -> Tuple[Tuple[int, ...], Image]:
-    data = cv2.imread(path.as_posix(), cv2.IMREAD_UNCHANGED)
-    _, fname = mkstemp(suffix=".png")
-    fig, ax = plt.subplots()
-    ax.imshow(data)
-    if segmentation is not None:
-        data = cv2.imread(segmentation.as_posix(), cv2.IMREAD_UNCHANGED)
-        ax.imshow(data, alpha=.8)
-    if bbox is not None:
-        with bbox.open("r") as fh:
-            for line in fh.readlines():
-                tag, xmin, ymin, xmax, ymax = (
-                    int(x) for x in line.strip().split()
-                )
-                rect = patches.Rectangle(
-                    (xmin, ymin),
-                    xmax - xmin,
-                    ymax - ymin,
-                    linewidth=2,
-                    edgecolor="blue",
-                    facecolor="none",
-                )
-                ax.add_patch(rect)
-
-    fig.savefig(fname)
-    plt.close(fig)
-    return data.shape, Image(fname)
-
-
-Elt = TypeVar("Elt")
-
-
-def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
-    return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
+widget_output_handler = OutputWidgetHandler()
 
 
 class Solver(Enum):
@@ -366,7 +305,7 @@ class MLWidget(object):
                 )
             )
             if c.json()["status"]["msg"] != "NotFound":
-                #self.clear()
+                # self.clear()
                 logging.warning(
                     (
                         "Since service '{sname}' was still there, "
@@ -483,125 +422,6 @@ class MLWidget(object):
             self.test_labels.rows = min(10, len(self.test_labels.options))
             if self.nclasses.value == -1:
                 self.nclasses.value = str(len(self.train_labels.options))
-
-
-class Classification(MLWidget, ImageTrainerMixin):
-    ctc = False
-    def update_train_file_list(self, *args):
-        with self.output:
-            if len(self.train_labels.value) == 0:
-                return
-            directory = (
-                Path(self.training_repo.value) / self.train_labels.value[0]
-            )
-            self.file_list.options = [
-                fh.as_posix()
-                for fh in sample_from_iterable(directory.glob("**/*"), 10)
-            ]
-            self.test_labels.value = []
-
-    def update_test_file_list(self, *args):
-        with self.output:
-            if len(self.test_labels.value) == 0:
-                return
-            directory = (
-                Path(self.testing_repo.value) / self.test_labels.value[0]
-            )
-            self.file_list.options = [
-                fh.as_posix()
-                for fh in sample_from_iterable(directory.glob("**/*"), 10)
-            ]
-            self.train_labels.value = []
-
-    def display_img(self, args):
-        self.output.clear_output()
-        with self.output:
-            for path in args["new"]:
-                shape, img = img_handle(Path(path))
-                if self.img_width.value == "":
-                    self.img_width.value = str(shape[0])
-                if self.img_height.value == "":
-                    self.img_height.value = str(shape[1])
-                display(
-                    img
-                )  # TODO display next to each other with shape info as well
-
-    def __init__(
-        self,
-        sname: str,
-        *,  # unnamed parameters are forbidden
-        training_repo: Path = None,
-        testing_repo: Path = None,
-        host: str = "localhost",
-        port: int = 1234,
-        path: str = "",
-        nclasses: int = -1,
-        description: str = "classification service",
-        model_repo: Optional[str] = None,
-        img_width: Optional[int] = None,
-        img_height: Optional[int] = None,
-        base_lr: float = 1e-4,
-        iterations: int = 10000,
-        snapshot_interval: int = 5000,
-        test_interval: int = 1000,
-        gpuid: int = 0,
-        layers: List[str] = [],
-        template: Optional[str] = None,
-        activation: Optional[str] = "relu",
-        dropout: float = 0.0,
-        autoencoder: bool = False,
-        mirror: bool = False,
-        rotate: bool = False,
-        scale: float = 1.0,
-        tsplit: float = 0.0,
-        finetune: bool = False,
-        resume: bool = False,
-        bw: bool = False,
-        crop_size: int = -1,
-        batch_size: int = 32,
-        test_batch_size: int = 16,
-        iter_size: int = 1,
-        solver_type: Solver = "SGD",
-        noise_prob: float = 0.0,
-        distort_prob: float = 0.0,
-        test_init: bool = False,
-        class_weights: List[float] = [],
-        weights: Path = None,
-        tboard: Optional[Path] = None,
-        ignore_label: int = -1,
-        multi_label: bool = False,
-        regression: bool = False,
-        rand_skip: int = 0,
-        timesteps: int = 32,
-        unchanged_data: bool = False,
-        ctc: bool = False,
-        target_repository: str = ""
-    ) -> None:
-
-        super().__init__(sname, locals())
-
-        self.train_labels = SelectMultiple(
-            options=[], value=[], description="Training labels", disabled=False
-        )
-
-        self.test_labels = SelectMultiple(
-            options=[], value=[], description="Testing labels", disabled=False
-        )
-
-        self.testing_repo.observe(self.update_label_list, names="value")
-        self.training_repo.observe(self.update_label_list, names="value")
-
-        self.train_labels.observe(self.update_train_file_list, names="value")
-        self.test_labels.observe(self.update_test_file_list, names="value")
-        self.file_list.observe(self.display_img, names="value")
-
-        self._img_explorer.children = [
-            HBox([HBox([self.train_labels, self.test_labels])]),
-            self.file_list,
-            self.output,
-        ]
-
-        self.update_label_list(())
 
 
 class Segmentation(MLWidget, ImageTrainerMixin):
@@ -730,6 +550,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
 
 class Detection(MLWidget, ImageTrainerMixin):
     ctc = False
+
     def display_img(self, args):
         self.output.clear_output()
         with self.output:
@@ -815,7 +636,7 @@ class Detection(MLWidget, ImageTrainerMixin):
         timesteps: int = 32,
         unchanged_data: bool = False,
         target_repository: str = "",
-        ctc: bool = False    
+        ctc: bool = False
     ) -> None:
 
         super().__init__(sname, locals())
@@ -1187,8 +1008,9 @@ class Text(MLWidget):
 
         return body
 
+
 class OCR(MLWidget, ImageTrainerMixin):
-    
+
     ctc = True
 
     def update_train_file_list(self, *args):
@@ -1218,7 +1040,7 @@ class OCR(MLWidget, ImageTrainerMixin):
                 fh.as_posix()
                 for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
-            
+
     def display_img(self, args):
         self.output.clear_output()
         with self.output:
@@ -1296,7 +1118,6 @@ class OCR(MLWidget, ImageTrainerMixin):
         self.train_labels.on_click(self.update_train_file_list)
         self.test_labels.on_click(self.update_test_file_list)
 
-        
         self.file_list.observe(self.display_img, names="value")
 
         self._img_explorer.children = [
@@ -1305,4 +1126,4 @@ class OCR(MLWidget, ImageTrainerMixin):
             self.output,
         ]
 
-        #self.update_label_list(())
+        # self.update_label_list(())
