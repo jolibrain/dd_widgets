@@ -83,7 +83,7 @@ class Detection(MLWidget, ImageTrainerMixin):
         batch_size: int = 32,
         test_batch_size: int = 16,
         iter_size: int = 1,
-        solver_type: Solver = Solver.SGD,
+        solver_type: Solver = "SGD",
         noise_prob: float = 0.001,
         distort_prob: float = 0.5,
         test_init: bool = False,

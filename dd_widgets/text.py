@@ -29,7 +29,7 @@ class Text(MLWidget):
         iterations: int = 25000,
         test_interval: int = 1000,
         base_lr: float = 0.001,
-        solver_type: Solver = Solver.SGD,
+        solver_type: Solver = "SGD",
         batch_size: int = 128,
         shuffle: bool = True,
         tsplit: float = 0.2,

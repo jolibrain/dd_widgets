@@ -49,7 +49,7 @@ class CSV(MLWidget):
         csv_categoricals: List[str] = [],
         scale_pos_weight: float = 1.0,
         shuffle: bool = True,
-        solver_type: Solver = Solver.AMSGRAD,
+        solver_type: Solver = "AMSGRAD",
         autoencoder: bool = False,
         target_repository: str = ""
     ) -> None:
