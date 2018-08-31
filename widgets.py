@@ -149,10 +149,10 @@ class MLWidget(object):
             description="Progression:",
             layout=Layout(margin="18px"),
         )
-        self.run_button = Button(description="Run")
+        self.run_button = Button(description="Run training")
         self.info_button = Button(description="Info")
-        self.clear_button = Button(description="Clear")
-        self.hardclear_button = Button(description="Hard Clear")
+        self.stop_button = Button(description="Stop training")
+        self.hardclear_button = Button(description="Hard clear")
 
         self._widgets = [  # typing: List[Widget]
             HTML(
@@ -160,13 +160,13 @@ class MLWidget(object):
                     task=self.__class__.__name__, sname=self.sname
                 )
             ),
-            HBox([self.run_button, self.clear_button]),
+            HBox([self.run_button, self.stop_button]),
             HBox([self.info_button, self.hardclear_button]),
         ]
 
         self.run_button.on_click(self.run)
         self.info_button.on_click(self.info)
-        self.clear_button.on_click(self.clear)
+        self.stop_button.on_click(self.stop)
         self.hardclear_button.on_click(self.hardclear)
 
         for name, value, type_hint in self.typing_info(local_vars):
@@ -244,9 +244,30 @@ class MLWidget(object):
     def _ipython_display_(self):
         self._main_elt._ipython_display_()
 
-    def clear(self, *_):
+    def stop(self, *_):
         self.output.clear_output()
         with self.output:
+            request = "http://{host}:{port}/{path}/services/{sname}".format(
+                host=self.host.value,
+                port=self.port.value,
+                path=self.path.value,
+                sname=self.sname,
+            )
+            c = requests.delete(request)
+            logging.info(
+                "Stop service {sname}: {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
+            )
+
+            print(json.dumps(c.json(), indent=2))
+            return c.json()
+
+    def hardclear(self, *_):
+        # The basic version
+        self.output.clear_output()
+        with self.output:
+            MLWidget.create_service(self)
             request = "http://{host}:{port}/{path}/services/{sname}?clear=full".format(
                 host=self.host.value,
                 port=self.port.value,
@@ -261,14 +282,7 @@ class MLWidget(object):
             )
 
             print(json.dumps(c.json(), indent=2))
-            return c.json()
-
-    def hardclear(self, *_):
-        # The basic version
-        self.output.clear_output()
-        with self.output:
-            MLWidget.create_service(self)
-            self.clear()
+            #return c.json()
 
     def create_service(self, *_):
         with self.output:
