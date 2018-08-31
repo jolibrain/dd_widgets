@@ -72,6 +72,7 @@ class ImageTrainerMixin:
                     "nclasses": nclasses,
                     "rotate": self.rotate.value,
                     "mirror": self.mirror.value,
+                    "scale": self.scale.value,
                     "layers": eval(self.layers.value),  # List of strings
                     "db": True,
                     "activation": self.activation.value,
@@ -83,6 +84,7 @@ class ImageTrainerMixin:
                     "nclasses": nclasses,
                     "mirror": self.mirror.value,
                     "rotate": self.rotate.value,
+                    "scale": self.scale.value,
                 }
         else:
             if self.template.value:
@@ -93,6 +95,12 @@ class ImageTrainerMixin:
                     "weights": self.weights.value,
                     "rotate": self.rotate.value,
                     "mirror": self.mirror.value,
+                    "scale": self.scale.value,
+                    "layers": eval(self.layers.value),  # List of strings
+                    "db": True,
+                    "activation": self.activation.value,
+                    "dropout": self.dropout.value,
+                    "autoencoder": self.autoencoder.value
                 }
             else:
                 parameters_mllib = {
@@ -101,6 +109,7 @@ class ImageTrainerMixin:
                     "weights": self.weights.value,
                     "rotate": self.rotate.value,
                     "mirror": self.mirror.value,
+                    "scale": self.scale.value,
                 }
         if self.multi_label.value:
             parameters_mllib["db"] = False
