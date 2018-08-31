@@ -1,7 +1,7 @@
 import logging
 
 from .classification import Classification  # noqa: F401
-from .csv import CSV  # noqa: F401
+from .ddcsv import CSV  # noqa: F401
 from .detection import Detection  # noqa: F401
 from .ocr import OCR  # noqa: F401
 from .segmentation import Segmentation  # noqa: F401
