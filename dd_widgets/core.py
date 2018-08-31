@@ -137,7 +137,7 @@ class ImageTrainerMixin:
                 "prob": self.distort_prob.value,
             }
         parameters_mllib["gpu"] = True
-        parameters_mllib["gpuid"] = self.gpuid.value
+        parameters_mllib["gpuid"] = eval(self.gpuid.value)
         if self.regression.value:
             parameters_mllib["regression"] = True
 
@@ -203,7 +203,7 @@ class ImageTrainerMixin:
 
         parameters_mllib = {
             "gpu": True,
-            "gpuid": self.gpuid.value,
+            "gpuid": eval(self.gpuid.value),
             "resume": self.resume.value,
             "net": {
                 "batch_size": self.batch_size.value,

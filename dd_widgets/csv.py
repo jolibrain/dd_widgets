@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import pandas as pd
 from ipywidgets import HTML
@@ -37,7 +37,7 @@ class CSV(MLWidget):
         nclasses: int = 2,
         batch_size: int = 128,
         test_batch_size: int = 16,
-        gpuid: int = 0,
+        gpuid: Union[int, List[int]] = 0,
         mllib: str = "caffe",
         lregression: bool = False,
         scale: bool = False,
@@ -121,7 +121,7 @@ class CSV(MLWidget):
                     {
                         "mllib": {
                             "gpu": True,
-                            "gpuid": self.gpuid.value,
+                            "gpuid": eval(self.gpuid.value),
                             "resume": self.resume.value,
                             "solver": {
                                 "iterations": self.iterations.value,

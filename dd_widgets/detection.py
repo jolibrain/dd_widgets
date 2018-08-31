@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from IPython.display import display
 
@@ -70,7 +70,7 @@ class Detection(MLWidget, ImageTrainerMixin):
         iterations: int = 10000,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,
-        gpuid: int = 0,
+        gpuid: Union[int, List[int]] = 0,
         layers: List[str] = [],
         template: Optional[str] = None,
         mirror: bool = False,

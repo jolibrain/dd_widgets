@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from ipywidgets import HBox, SelectMultiple
 
@@ -25,7 +25,7 @@ class Text(MLWidget):
         db: bool = False,
         nclasses: int = -1,
         layers: List[str] = [],
-        gpuid: int = 0,
+        gpuid: Union[int, List[int]] = 0,
         iterations: int = 25000,
         test_interval: int = 1000,
         base_lr: float = 0.001,
@@ -164,7 +164,7 @@ class Text(MLWidget):
                     {
                         "mllib": {
                             "gpu": True,
-                            "gpuid": self.gpuid.value,
+                            "gpuid": eval(self.gpuid.value),
                             "solver": {
                                 "iterations": self.iterations.value,
                                 "test_interval": self.test_interval.value,
