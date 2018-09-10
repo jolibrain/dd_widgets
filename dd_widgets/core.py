@@ -95,6 +95,7 @@ class ImageTrainerMixin:
                     "mirror": self.mirror.value,
                     "rotate": self.rotate.value,
                     "scale": self.scale.value,
+                    "autoencoder": self.autoencoder.value,
                 }
         else:
             if self.template.value:
@@ -120,6 +121,7 @@ class ImageTrainerMixin:
                     "rotate": self.rotate.value,
                     "mirror": self.mirror.value,
                     "scale": self.scale.value,
+                    "autoencoder": self.autoencoder.value,
                 }
         if self.multi_label.value:
             parameters_mllib["db"] = False
