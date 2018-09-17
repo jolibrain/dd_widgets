@@ -12,6 +12,7 @@ from typing import Iterator, Optional, Tuple, TypeVar
 import matplotlib.pyplot as plt
 from IPython.display import Image
 from matplotlib import patches
+from matplotlib.cm import get_cmap
 
 import cv2
 
@@ -286,7 +287,10 @@ def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
 
 
 def img_handle(
-    path: Path, segmentation: Optional[Path] = None, bbox: Optional[Path] = None
+    path: Path,
+    segmentation: Optional[Path] = None,
+    bbox: Optional[Path] = None,
+    nclasses: int = -1
 ) -> Tuple[Tuple[int, ...], Image]:
     data = cv2.imread(path.as_posix(), cv2.IMREAD_UNCHANGED)
     _, fname = mkstemp(suffix=".png")
@@ -295,18 +299,36 @@ def img_handle(
     if segmentation is not None:
         data = cv2.imread(segmentation.as_posix(), cv2.IMREAD_UNCHANGED)
         ax.imshow(data, alpha=.8)
+        if data.max() >= nclasses > -1:
+            raise RuntimeError(
+                "Index {max} present in {filename}".format(
+                    max=data.max(),
+                    filename=segmentation.as_posix()
+                )
+            )
     if bbox is not None:
+        
+        if nclasses > -1:
+            cmap = get_cmap('jet', nclasses-1)
+            
         with bbox.open("r") as fh:
             for line in fh.readlines():
                 tag, xmin, ymin, xmax, ymax = (
-                    int(x) for x in line.strip().split()
+                    int(float(x)) for x in line.strip().split()
                 )
+                if tag >= nclasses > -1:
+                    raise RuntimeError(
+                        "Index {max} present in {filename}".format(
+                            max=tag,
+                            filename=bbox.as_posix()
+                        )
+                    )                    
                 rect = patches.Rectangle(
                     (xmin, ymin),
                     xmax - xmin,
                     ymax - ymin,
                     linewidth=2,
-                    edgecolor="blue",
+                    edgecolor=cmap(tag) if nclasses > -1 else 'blue',
                     facecolor="none",
                 )
                 ax.add_patch(rect)

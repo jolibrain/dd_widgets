@@ -21,7 +21,11 @@ class Detection(MLWidget, ImageTrainerMixin):
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
                     self.img_height.value = str(shape[1])
-                _, img = img_handle(Path(path), bbox=self.file_dict[Path(path)])
+                _, img = img_handle(
+                    Path(path),
+                    bbox=self.file_dict[Path(path)],
+                    nclasses=self.nclasses.value
+                )
                 display(img)
 
     def update_train_file_list(self, *args):
