@@ -23,7 +23,8 @@ from .loghandler import OutputWidgetHandler
 
 # fmt: on
 
-widget_output_handler = OutputWidgetHandler()
+info_loghandler = OutputWidgetHandler()
+
 sname_url = "http://{host}:{port}/{path}/services/{sname}"
 
 
@@ -90,7 +91,12 @@ class MLWidget(object):
             
         self.status_label.value = ", ".join(label)
 
-
+    def widgets_refresh(self, *_):
+        with self.output:
+            with open('widgets.log', 'r') as fh:
+                l = fh.readlines()
+                self.debug.value = "<code style='display: block; white-space: pre-wrap;'>" + "".join(l[-200:]) + "</code>"
+        
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
         # logger.addHandler(log_viewer(self.output),)
@@ -124,6 +130,7 @@ class MLWidget(object):
         self.stop_button.on_click(self.stop)
         self.hardclear_button.on_click(self.hardclear)
 
+
         for name, value, type_hint in self.typing_info(local_vars):
             self._add_widget(name, value, type_hint)
 
@@ -140,9 +147,13 @@ class MLWidget(object):
             [self.output], layout=Layout(min_height="800px", width="590px")
         )
 
-        self._tabs.children = [self._img_explorer, widget_output_handler.out]
+        self.debug = HTML(layout = {"width": "590px", "height": "800px", "border": "none"})
+        self.refresh_button = Button(description='Refresh')
+        self.refresh_button.on_click(self.widgets_refresh)
+        self._tabs.children = [self._img_explorer, info_loghandler.out, VBox([self.refresh_button, self.debug])]
         self._tabs.set_title(0, "Exploration")
-        self._tabs.set_title(1, "Logs")
+        self._tabs.set_title(1, "Logs (INFO)")
+        self._tabs.set_title(2, "widgets.log (tail)")
 
         self.file_list = SelectMultiple(
             options=[],
@@ -200,7 +211,7 @@ class MLWidget(object):
         self._main_elt._ipython_display_()
 
     def stop(self, *_):
-        widget_output_handler.out.clear_output()
+        info_loghandler.out.clear_output()
         self.output.clear_output()
         with self.output:
             request = sname_url.format(
@@ -223,7 +234,7 @@ class MLWidget(object):
 
     def hardclear(self, *_):
         # The basic version
-        widget_output_handler.out.clear_output()
+        info_loghandler.out.clear_output()
         self.output.clear_output()
         with self.output:
             MLWidget.create_service(self)
@@ -247,7 +258,7 @@ class MLWidget(object):
             #return json_dict
 
     def create_service(self, *_):
-        widget_output_handler.out.clear_output()
+        info_loghandler.out.clear_output()
         with self.output:
             host = self.host.value
             port = self.port.value
