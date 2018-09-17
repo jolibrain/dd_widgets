@@ -3,7 +3,10 @@
 import json
 import logging
 import time
+import threading
+
 from collections import OrderedDict
+from datetime import timedelta
 from enum import Enum
 from inspect import signature
 from pathlib import Path
@@ -72,6 +75,21 @@ class MLWidget(object):
                     eval(param.name, local_vars),
                     typing_dict[param.name],
                 )
+        
+    @property
+    def status(self):
+        return self.status_label.value
+    
+    @status.setter
+    def status(self, value):            
+        label = []
+        if 'status' in value:
+            label.append('status: {}'.format(value['status']))
+        if 'time' in value:
+            label.append('elapsed time: {}'.format(timedelta(seconds=value['time'])))
+            
+        self.status_label.value = ", ".join(label)
+
 
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
@@ -82,12 +100,13 @@ class MLWidget(object):
         self.pbar = IntProgress(
             min=0,
             max=100,
-            description="Progression:",
+            description="Progression",
             layout=Layout(margin="18px"),
         )
+        self.status_label = Label(value='Status: unknown', layout=Layout(margin="18px"),)
         self.run_button = Button(description="Run training")
         self.info_button = Button(description="Info")
-        self.stop_button = Button(description="Stop training")
+        self.stop_button = Button(description="Delete service")
         self.hardclear_button = Button(description="Hard clear")
 
         self._widgets = [  # typing: List[Widget]
@@ -113,7 +132,7 @@ class MLWidget(object):
         )
 
         self._tabs = Tab(layout=Layout(height=""))
-        self._output = VBox([self.pbar, self._tabs])
+        self._output = VBox([HBox([self.pbar, self.status_label]), self._tabs])
         self._main_elt = HBox(
             [self._configuration, self._output], layout=Layout(width="1200px")
         )
@@ -181,6 +200,7 @@ class MLWidget(object):
         self._main_elt._ipython_display_()
 
     def stop(self, *_):
+        widget_output_handler.out.clear_output()
         self.output.clear_output()
         with self.output:
             request = sname_url.format(
@@ -195,12 +215,15 @@ class MLWidget(object):
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
                 )
             )
-
-            print(json.dumps(c.json(), indent=2))
-            return c.json()
+            json_dict = c.json()
+            if 'head' in json_dict:
+                self.status = json_dict['head']
+            print(json.dumps(json_dict, indent=2))
+            return json_dict
 
     def hardclear(self, *_):
         # The basic version
+        widget_output_handler.out.clear_output()
         self.output.clear_output()
         with self.output:
             MLWidget.create_service(self)
@@ -217,10 +240,14 @@ class MLWidget(object):
                 )
             )
 
-            print(json.dumps(c.json(), indent=2))
-            # return c.json()
+            json_dict = c.json()
+            if 'head' in json_dict:
+                self.status = json_dict['head']
+            print(json.dumps(json_dict, indent=2))
+            #return json_dict
 
     def create_service(self, *_):
+        widget_output_handler.out.clear_output()
         with self.output:
             host = self.host.value
             port = self.port.value
@@ -266,6 +293,12 @@ class MLWidget(object):
                         sname=self.sname, json=json.dumps(c.json(), indent=2)
                     )
                 )
+                raise RuntimeError(
+                    "Error code {code}: {msg}".format(
+                        code=c.json()['status']['dd_code'],
+                        msg=c.json()['status']['dd_msg']
+                    )
+                )
             else:
                 logging.info(
                     "Reply from creating service '{sname}': {json}".format(
@@ -273,9 +306,11 @@ class MLWidget(object):
                     )
                 )
 
-            print(json.dumps(c.json(), indent=2))
-
-            return c.json()
+            json_dict = c.json()
+            if 'head' in json_dict:
+                self.status = json_dict['head']
+            print(json.dumps(json_dict, indent=2))
+            return json_dict
 
     def run(self, *_):
         logging.info("Entering run method")
@@ -331,7 +366,12 @@ class MLWidget(object):
                         sname=self.sname, json=json.dumps(c.json(), indent=2)
                     )
                 )
-                return
+                raise RuntimeError(
+                    "Error code {code}: {msg}".format(
+                        code=c.json()['status']['dd_code'],
+                        msg=c.json()['status']['dd_msg']
+                    )
+                )
             else:
                 logging.info(
                     "Reply from creating service '{sname}': {json}".format(
@@ -358,26 +398,34 @@ class MLWidget(object):
                 )
             )
 
-            print(json.dumps(c.json(), indent=2))
-
+            json_dict = c.json()
+            if 'head' in json_dict:
+                self.status = json_dict['head']
+            print(json.dumps(json_dict, indent=2))
+        
             self.value = self.iterations.value
             self.pbar.bar_style = "info"
             self.pbar.max = self.iterations.value
 
-            while True:
-                info = self.info(print_output=False)
-                self.pbar.bar_style = ""
+            thread = threading.Thread(target=self.update_loop)
+            thread.start()
+            
+                
+    def update_loop(self):
+        
+        while True:
+            info = self.info(print_output=False)
+            self.pbar.bar_style = ""
+            status = info['head']['status']
 
-                status = info["head"]["status"]
+            if status == "finished":
+                self.pbar.value = self.iterations.value
+                self.pbar.bar_style = "success"
+                break
 
-                if status == "finished":
-                    self.pbar.value = self.iterations.value
-                    self.pbar.bar_style = "success"
-                    break
+            self.pbar.value = info["body"]["measure"].get("iteration", 0)
 
-                self.pbar.value = info["body"]["measure"].get("iteration", 0)
-
-                time.sleep(1)
+            time.sleep(1)
 
     def info(self, print_output=True):
         with self.output:
@@ -392,14 +440,18 @@ class MLWidget(object):
                 )
             )
             c = requests.get(request)
-            logging.info(
+            logging.debug(
                 "Getting info for service {sname}: {json}".format(
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
                 )
             )
+            
+            json_dict = c.json()
+            if 'head' in json_dict:
+                self.status = json_dict['head']
             if print_output:
-                print(json.dumps(c.json(), indent=2))
-            return c.json()
+                print(json.dumps(json_dict, indent=2))
+            return json_dict
 
     def update_label_list(self, _):
         with self.output:
