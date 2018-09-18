@@ -6,7 +6,7 @@ from .detection import Detection  # noqa: F401
 from .ocr import OCR  # noqa: F401
 from .segmentation import Segmentation  # noqa: F401
 from .text import Text  # noqa: F401
-from .widgets import widget_output_handler
+from .widgets import info_loghandler
 
 # -- Logging --
 
@@ -19,7 +19,9 @@ logging.basicConfig(
     format=fmt,
     level=logging.DEBUG,
     datefmt="%m-%d %H:%M:%S",
-    handlers=[file_handler, widget_output_handler],
+    handlers=[file_handler, info_loghandler],
 )
+
+info_loghandler.setLevel(logging.INFO)
 
 logging.info("Creating widgets.log file")

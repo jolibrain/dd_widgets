@@ -130,7 +130,12 @@ class Segmentation(MLWidget, ImageTrainerMixin):
                 display(
                     img
                 )  # TODO display next to each other with shape info as well
-                _, img = img_handle(Path(path), self.file_dict[Path(path)])
+                
+                _, img = img_handle(
+                    Path(path),
+                    self.file_dict[Path(path)],
+                    nclasses=self.nclasses.value
+                )
                 display(img)
                 # display(Image(path))
                 # integrate THIS : https://github.com/alx/react-bounding-box
