@@ -53,6 +53,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-3,
+        db: bool = False,
         iterations: int = 10000,
         activation: str = "relu",
         dropout: float = 0.0,

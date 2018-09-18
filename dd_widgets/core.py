@@ -235,7 +235,9 @@ class ImageTrainerMixin:
         if self.timesteps.value:
             parameters_mllib["timesteps"] = self.timesteps.value
 
-        if self.__class__.__name__ == "Segmentation":
+        if self.__class__.__name__ == "Classification":
+            parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
+        elif self.__class__.__name__ == "Segmentation":
             parameters_output = {"measure": ["acc"]}
         elif self.__class__.__name__ == "Detection":
             parameters_output = {"measure": ["map"]}
