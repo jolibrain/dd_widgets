@@ -22,7 +22,7 @@ class Text(MLWidget):
         host: str = "localhost",
         port: int = 1234,
         path: str = "",
-        db: bool = False,
+        db: bool = True,
         nclasses: int = -1,
         layers: List[str] = [],
         gpuid: Union[int, List[int]] = 0,
@@ -139,6 +139,7 @@ class Text(MLWidget):
                             "nclasses": self.nclasses.value,
                             "layers": eval(self.layers.value),
                             "activation": self.activation.value,
+                            "db": self.db.value
                         },
                     },
                 ),
