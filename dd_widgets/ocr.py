@@ -11,8 +11,7 @@ from .widgets import MLWidget, Solver
 
 class OCR(MLWidget, ImageTrainerMixin):
 
-    ctc = True
-
+    
     def update_train_file_list(self, *args):
         with self.output:
             # print (Path(self.training_repo.value).read_text().split('\n'))
@@ -59,6 +58,7 @@ class OCR(MLWidget, ImageTrainerMixin):
         self,
         sname: str,
         *,  # unnamed parameters are forbidden
+        ctc: bool = True,
         training_repo: Path = None,
         testing_repo: Path = None,
         host: str = "localhost",
@@ -75,9 +75,13 @@ class OCR(MLWidget, ImageTrainerMixin):
         test_interval: int = 1000,
         gpuid: Union[int, List[int]] = 0,
         layers: List[str] = [],
+        activation: Optional[str] = "relu",
+        dropout: float = 0.0,
+        autoencoder: bool = False,
         template: Optional[str] = None,
         mirror: bool = False,
         rotate: bool = False,
+        scale: bool = False,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,

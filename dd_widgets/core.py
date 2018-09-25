@@ -242,6 +242,8 @@ class ImageTrainerMixin:
             parameters_output = {"measure": ["acc"]}
         elif self.__class__.__name__ == "Detection":
             parameters_output = {"measure": ["map"]}
+        elif self.__class__.__name__ == "OCR":
+            parameters_output = {"measure": ["acc"]}
         elif self.multi_label.value and self.regression.value:
             parameters_output = {
                 "measure": [
