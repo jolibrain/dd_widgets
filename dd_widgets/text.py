@@ -141,6 +141,9 @@ class Text(MLWidget):
                             "activation": self.activation.value,
                             "db": self.db.value
                         },
+                        "output": {
+                            "store_config":True
+                        }
                     },
                 ),
                 (

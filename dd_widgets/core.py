@@ -153,7 +153,7 @@ class ImageTrainerMixin:
             )
         )
 
-        parameters_output = {}
+        parameters_output = {'store_config':True}
         # print (parameters_input)
         # print (parameters_mllib)
         # pserv = dd.put_service(self.sname.value,model,description,mllib,
