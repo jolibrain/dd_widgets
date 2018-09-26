@@ -6,7 +6,7 @@ from IPython.display import display
 from ipywidgets import HBox, SelectMultiple
 
 from .core import ImageTrainerMixin, img_handle, sample_from_iterable
-from .widgets import MLWidget, Solver
+from .widgets import MLWidget, Solver, GPUIndex
 
 
 class Classification(MLWidget, ImageTrainerMixin):
@@ -59,6 +59,7 @@ class Classification(MLWidget, ImageTrainerMixin):
         testing_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        gpuid: GPUIndex = 0,
         path: str = "",
         nclasses: int = -1,
         description: str = "classification service",
@@ -69,7 +70,6 @@ class Classification(MLWidget, ImageTrainerMixin):
         iterations: int = 10000,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,
-        gpuid: Union[int, List[int]] = 0,
         layers: List[str] = [],
         template: Optional[str] = None,
         activation: Optional[str] = "relu",

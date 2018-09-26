@@ -43,7 +43,38 @@ class SolverDropdown(Dropdown):
         Dropdown.__init__(
             self, *args, options=list(e.name for e in Solver), **kwargs
         )
+        
+class GPUIndex(tuple):
+    pass
 
+class GPUSelect(SelectMultiple):
+    def __init__(self, host='localhost', *args, **kwargs):
+        if 'value' in kwargs:
+            kwargs['index'] = kwargs['value']
+            del kwargs['value']
+        if kwargs['index'] is None:
+            kwargs['index'] = tuple()
+        if isinstance(kwargs['index'], int):
+            kwargs['index'] = kwargs['index'], 
+        
+        try:
+            c = requests.get('http://{}:12345'.format(host))
+            assert c.status_code == 200
+            SelectMultiple.__init__(
+                self, *args, 
+                options=list(
+                    "GPU {index} ({utilization}%)".format(
+                        index=x['index'], utilization=x['utilization.gpu']
+                    ) for x in c.json()['gpus']
+                ),
+                **kwargs
+            )
+        except Exception:
+            SelectMultiple.__init__(
+                self, *args, 
+                options=list(range(8)),  # default, just in case
+                **kwargs
+            )
 
 # -- Core 'abstract' widget for many tasks
 
@@ -61,6 +92,7 @@ class MLWidget(object):
         float: FloatText,
         bool: Checkbox,
         Solver: SolverDropdown,
+        GPUIndex: GPUSelect
     }
 
     # host: TextWidget
@@ -133,7 +165,7 @@ class MLWidget(object):
 
         for name, value, type_hint in self.typing_info(local_vars):
             self._add_widget(name, value, type_hint)
-
+        
         self._configuration = VBox(
             self._widgets, layout=Layout(min_width="250px")
         )
@@ -185,13 +217,16 @@ class MLWidget(object):
                 )
             )
         else:
+            default_params = dict(
+                value=type_hint() if value is None else (value),
+                layout=Layout(width="100px", margin="4px 2px 4px 2px"),
+            )
+            if name == 'gpuid':
+                default_params['host'] = self.host.value
             setattr(
                 self,
                 name,
-                widget_type(
-                    value=type_hint() if value is None else (value),
-                    layout=Layout(width="100px", margin="4px 2px 4px 2px"),
-                ),
+                widget_type(**default_params),
             )
 
             self._widgets.append(

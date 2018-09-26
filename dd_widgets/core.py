@@ -140,7 +140,12 @@ class ImageTrainerMixin:
                 "prob": self.distort_prob.value,
             }
         parameters_mllib["gpu"] = True
-        parameters_mllib["gpuid"] = eval(self.gpuid.value)
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
+        parameters_mllib["gpuid"] = (
+            list(self.gpuid.index)
+            if len(self.gpuid.index) > 1
+            else self.gpuid.index[0]
+        )
         if self.regression.value:
             parameters_mllib["regression"] = True
 
@@ -203,10 +208,15 @@ class ImageTrainerMixin:
         if self.ctc.value:
             if self.align.value:
                 parameters_input["align"] = True
-
+                
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
         parameters_mllib = {
             "gpu": True,
-            "gpuid": eval(self.gpuid.value),
+            "gpuid": (
+                list(self.gpuid.index)
+                if len(self.gpuid.index) > 1
+                else self.gpuid.index[0]
+            ),
             "resume": self.resume.value,
             "net": {
                 "batch_size": self.batch_size.value,
