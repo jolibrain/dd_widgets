@@ -25,6 +25,7 @@ class Text(MLWidget):
         path: str = "",
         db: bool = True,
         nclasses: int = -1,
+        ignore_label: Optional[int] = None,
         layers: List[str] = [],
         iterations: int = 25000,
         test_interval: int = 1000,
@@ -204,5 +205,8 @@ class Text(MLWidget):
                 ("data", [self.training_repo.value]),
             ]
         )
-
+        
+        if self.ignore_label.value is not None:
+            body['parameters']['mllib']['ignore_label'] = self.ignore_label.value
+            
         return body

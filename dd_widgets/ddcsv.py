@@ -36,6 +36,7 @@ class CSV(MLWidget):
         finetune: bool = False,
         weights: Optional[Path] = None,
         nclasses: int = 2,
+        ignore_label: Optional[int] = None,
         batch_size: int = 128,
         test_batch_size: int = 16,
         mllib: str = "caffe",
@@ -169,5 +170,8 @@ class CSV(MLWidget):
 
         if self.autoencoder.value:
             body["parameters"]["output"]["measure"] = ["eucll"]
+            
+        if self.ignore_label.value is not None:
+            body['parameters']['mllib']['ignore_label'] = self.ignore_label.value
 
         return body
