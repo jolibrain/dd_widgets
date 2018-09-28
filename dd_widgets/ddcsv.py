@@ -40,7 +40,6 @@ class CSV(MLWidget):
         ignore_label: Optional[int] = None,
         batch_size: int = 128,
         test_batch_size: int = 16,
-        gpuid: Union[int, List[int]] = 0,
         mllib: str = "caffe",
         lregression: bool = False,
         scale: bool = False,
