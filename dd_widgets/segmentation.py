@@ -6,7 +6,7 @@ from IPython.display import display
 from ipywidgets import Button, HBox
 
 from .core import ImageTrainerMixin, img_handle, sample_from_iterable
-from .widgets import MLWidget, Solver
+from .widgets import MLWidget, Solver, GPUIndex
 
 
 class Segmentation(MLWidget, ImageTrainerMixin):
@@ -46,6 +46,7 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         testing_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        gpuid: GPUIndex = 0,
         path: str = "",
         nclasses: int = -1,
         description: str = "Segmentation service",
@@ -60,7 +61,6 @@ class Segmentation(MLWidget, ImageTrainerMixin):
         autoencoder: bool = False,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,
-        gpuid: Union[int, List[int]] = 0,
         layers: List[str] = [],
         template: Optional[str] = None,
         mirror: bool = True,

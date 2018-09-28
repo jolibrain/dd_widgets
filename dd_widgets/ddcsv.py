@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 import pandas as pd
 from ipywidgets import HTML
 
-from .widgets import MLWidget, Solver
+from .widgets import MLWidget, Solver, GPUIndex
 
 
 class CSV(MLWidget):
@@ -20,6 +20,7 @@ class CSV(MLWidget):
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        gpuid: GPUIndex = 0,
         path: str = "",
         tsplit: float = 0.01,
         base_lr: float = 0.01,
@@ -36,9 +37,11 @@ class CSV(MLWidget):
         finetune: bool = False,
         weights: Optional[Path] = None,
         nclasses: int = 2,
+        ignore_label: Optional[int] = None,
         batch_size: int = 128,
         test_batch_size: int = 16,
         gpuid: Union[int, List[int]] = 0,
+        mllib: str = "caffe",
         lregression: bool = False,
         scale: bool = False,
         csv_id: str = "",
@@ -115,6 +118,8 @@ class CSV(MLWidget):
         return body
 
     def _train_body(self):
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
+
         body = OrderedDict(
             [
                 ("service", self.sname),
@@ -124,7 +129,11 @@ class CSV(MLWidget):
                     {
                         "mllib": {
                             "gpu": True,
-                            "gpuid": eval(self.gpuid.value),
+                            "gpuid": (
+                                 list(self.gpuid.index)
+                                 if len(self.gpuid.index) > 1
+                                 else self.gpuid.index[0]
+                            ),
                             "resume": self.resume.value,
                             "solver": {
                                 "iterations": self.iterations.value,
@@ -166,5 +175,8 @@ class CSV(MLWidget):
 
         if self.autoencoder.value:
             body["parameters"]["output"]["measure"] = ["eucll"]
+            
+        if self.ignore_label.value is not None:
+            body['parameters']['mllib']['ignore_label'] = self.ignore_label.value
 
         return body

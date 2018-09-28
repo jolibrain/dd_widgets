@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 from ipywidgets import HBox, SelectMultiple
 
 from .core import sample_from_iterable
-from .widgets import MLWidget, Solver
+from .widgets import MLWidget, Solver, GPUIndex
 
 alpha = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:’\“/\_@#$%^&*~`+-=<>()[]{}"
 
@@ -22,11 +22,12 @@ class Text(MLWidget):
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
+        gpuid: GPUIndex = 0,
         path: str = "",
         db: bool = True,
         nclasses: int = -1,
+        ignore_label: Optional[int] = None,
         layers: List[str] = [],
-        gpuid: Union[int, List[int]] = 0,
         iterations: int = 25000,
         test_interval: int = 1000,
         base_lr: float = 0.001,
@@ -160,6 +161,7 @@ class Text(MLWidget):
         return body
 
     def _train_body(self):
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
         body = OrderedDict(
             [
                 ("service", self.sname),
@@ -169,7 +171,11 @@ class Text(MLWidget):
                     {
                         "mllib": {
                             "gpu": True,
-                            "gpuid": eval(self.gpuid.value),
+                            "gpuid": (
+                                 list(self.gpuid.index)
+                                 if len(self.gpuid.index) > 1
+                                 else self.gpuid.index[0]
+                            ),
                             "solver": {
                                 "iterations": self.iterations.value,
                                 "test_interval": self.test_interval.value,
@@ -200,5 +206,8 @@ class Text(MLWidget):
                 ("data", [self.training_repo.value]),
             ]
         )
-
+        
+        if self.ignore_label.value is not None:
+            body['parameters']['mllib']['ignore_label'] = self.ignore_label.value
+            
         return body

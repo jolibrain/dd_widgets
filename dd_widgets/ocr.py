@@ -6,7 +6,7 @@ from IPython.display import display
 from ipywidgets import HBox, Button
 
 from .core import ImageTrainerMixin, img_handle, sample_from_iterable
-from .widgets import MLWidget, Solver
+from .widgets import MLWidget, Solver, GPUIndex
 
 
 class OCR(MLWidget, ImageTrainerMixin):
@@ -64,6 +64,7 @@ class OCR(MLWidget, ImageTrainerMixin):
         host: str = "localhost",
         port: int = 1234,
         path: str = "",
+        gpuid: GPUIndex = 0,
         nclasses: int = -1,
         description: str = "OCR service",
         model_repo: Optional[str] = None,
@@ -73,7 +74,6 @@ class OCR(MLWidget, ImageTrainerMixin):
         iterations: int = 10000,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,
-        gpuid: Union[int, List[int]] = 0,
         layers: List[str] = [],
         activation: Optional[str] = "relu",
         dropout: float = 0.0,
