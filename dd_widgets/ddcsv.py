@@ -13,6 +13,7 @@ class CSV(MLWidget):
         self,
         sname: str,
         *,
+        mllib: str = "caffe",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "CSV service",
@@ -38,7 +39,6 @@ class CSV(MLWidget):
         batch_size: int = 128,
         test_batch_size: int = 16,
         gpuid: Union[int, List[int]] = 0,
-        mllib: str = "caffe",
         lregression: bool = False,
         scale: bool = False,
         csv_id: str = "",
@@ -64,7 +64,7 @@ class CSV(MLWidget):
     def _create_service_body(self):
         body = OrderedDict(
             [
-                ("mllib", "caffe"),
+                ("mllib", self.mllib.value),
                 ("description", self.sname),
                 ("type", "supervised"),
                 (
@@ -83,6 +83,9 @@ class CSV(MLWidget):
                             "layers": eval(self.layers.value),
                             "autoencoder": self.autoencoder.value,
                         },
+                        "output": {
+                            "store_config":True
+                        }
                     },
                 ),
                 (

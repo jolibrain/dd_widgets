@@ -15,6 +15,7 @@ class Text(MLWidget):
         self,
         sname: str,
         *,
+        mllib: str = "caffe",
         training_repo: Path,
         testing_repo: Optional[Path] = None,
         description: str = "Text service",
@@ -119,7 +120,7 @@ class Text(MLWidget):
 
         body = OrderedDict(
             [
-                ("mllib", "caffe"),
+                ("mllib", self.mllib.value),
                 ("description", "newsgroup classification service"),
                 ("type", "supervised"),
                 (
