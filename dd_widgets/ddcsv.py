@@ -100,14 +100,16 @@ class CSV(MLWidget):
             ]
         )
 
+        if self.mllib.value == 'xgboost':
+            del body['parameters']['mllib']['solver']
+            body['parameters']['mllib']['iterations'] = self.iterations.value
+            body["parameters"]["mllib"]["db"] = False
+        
         if self.lregression.value:
             body["parameters"]["mllib"]["template"] = "lregression"
-            del body["parameters"]["mllib"]["layes"]
+            del body["parameters"]["mllib"]["layers"]
         else:
             body["parameters"]["mllib"]["dropout"] = self.dropout.value
-
-        if self.mllib.value == "xgboost":
-            body["parameters"]["mllib"]["db"] = False
 
         if self.finetune.value:
             body["parameters"]["mllib"]["finetuning"] = True

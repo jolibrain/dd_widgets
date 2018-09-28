@@ -206,6 +206,10 @@ class Text(MLWidget):
                 ("data", [self.training_repo.value]),
             ]
         )
+
+        if self.mllib.value == 'xgboost':
+            del body['parameters']['mllib']['solver']
+            body['parameters']['mllib']['iterations'] = self.iterations.value
         
         if self.ignore_label.value is not None:
             body['parameters']['mllib']['ignore_label'] = self.ignore_label.value
