@@ -40,7 +40,6 @@ class CSV(MLWidget):
         ignore_label: Optional[int] = None,
         batch_size: int = 128,
         test_batch_size: int = 16,
-        mllib: str = "caffe",
         lregression: bool = False,
         scale: bool = False,
         csv_id: str = "",
