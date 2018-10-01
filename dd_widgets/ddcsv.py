@@ -37,7 +37,7 @@ class CSV(MLWidget):
         finetune: bool = False,
         weights: Optional[Path] = None,
         nclasses: int = 2,
-        ignore_label: Optional[int] = None,
+        ignore_label: Optional[int] = -1,
         batch_size: int = 128,
         test_batch_size: int = 16,
         lregression: bool = False,

@@ -26,7 +26,7 @@ class Text(MLWidget):
         path: str = "",
         db: bool = True,
         nclasses: int = -1,
-        ignore_label: Optional[int] = None,
+        ignore_label: Optional[int] = -1,
         layers: List[str] = [],
         iterations: int = 25000,
         test_interval: int = 1000,
