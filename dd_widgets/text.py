@@ -211,7 +211,7 @@ class Text(MLWidget):
             del body['parameters']['mllib']['solver']
             body['parameters']['mllib']['iterations'] = self.iterations.value
         
-        if self.ignore_label.value is not None:
-            body['parameters']['mllib']['ignore_label'] = self.ignore_label.value
+        if self.ignore_label.value != -1:
+            body['parameters']['mllib']['ignore_label'] = int(self.ignore_label.value)
             
         return body

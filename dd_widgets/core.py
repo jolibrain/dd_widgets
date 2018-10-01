@@ -242,7 +242,7 @@ class ImageTrainerMixin:
         if self.class_weights.value:
             parameters_mllib["class_weights"] = eval(self.class_weights.value)
         if self.ignore_label.value >= 0:
-            parameters_mllib["ignore_label"] = self.ignore_label.value
+            parameters_mllib["ignore_label"] = int(self.ignore_label.value)
         if self.timesteps.value:
             parameters_mllib["timesteps"] = self.timesteps.value
 

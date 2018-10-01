@@ -176,7 +176,7 @@ class CSV(MLWidget):
         if self.autoencoder.value:
             body["parameters"]["output"]["measure"] = ["eucll"]
             
-        if self.ignore_label.value is not None:
-            body['parameters']['mllib']['ignore_label'] = self.ignore_label.value
+        if self.ignore_label.value != -1:
+            body['parameters']['mllib']['ignore_label'] = int(self.ignore_label.value)
 
         return body
