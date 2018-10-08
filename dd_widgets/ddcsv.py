@@ -22,6 +22,8 @@ class CSV(MLWidget):
         port: int = 1234,
         gpuid: GPUIndex = 0,
         path: str = "",
+        regression: bool = False,
+        ntargets: int = 0,
         tsplit: float = 0.01,
         base_lr: float = 0.01,
         iterations: int = 100,
@@ -46,7 +48,7 @@ class CSV(MLWidget):
         csv_separator: str = ",",
         csv_ignore: List[str] = [],
         csv_label: str = "",
-        csv_label_offset: int = -1,
+        csv_label_offset: int = 0,
         csv_categoricals: List[str] = [],
         scale_pos_weight: float = 1.0,
         shuffle: bool = True,
@@ -83,6 +85,7 @@ class CSV(MLWidget):
                             "template": self.template.value,
                             "layers": eval(self.layers.value),
                             "autoencoder": self.autoencoder.value,
+                            "regression": self.regression.value
                         },
                         "output": {
                             "store_config":True
@@ -100,6 +103,10 @@ class CSV(MLWidget):
             ]
         )
 
+        if self.regression.value:
+            del body['parameters']['mllib']['nclasses']
+            body['parameters']['mllib']['ntargets'] = int(self.ntargets.value)
+        
         if self.mllib.value == 'xgboost':
             del body['parameters']['mllib']['solver']
             body['parameters']['mllib']['iterations'] = self.iterations.value
@@ -170,6 +177,10 @@ class CSV(MLWidget):
             ]
         )
 
+        if self.regression.value:
+            del body['parameters']['output']['measure']
+            body['parameters']['output']['measure'] = ['eucll']
+        
         if self.nclasses.value == 2:
             body["parameters"]["output"]["measure"].append("auc")
 
