@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from ipywidgets import HBox, SelectMultiple
 
@@ -24,6 +24,7 @@ class Text(MLWidget):
         port: int = 1234,
         gpuid: GPUIndex = 0,
         path: str = "",
+        regression: bool = False,
         db: bool = True,
         nclasses: int = -1,
         ignore_label: Optional[int] = -1,
@@ -141,11 +142,10 @@ class Text(MLWidget):
                             "nclasses": self.nclasses.value,
                             "layers": eval(self.layers.value),
                             "activation": self.activation.value,
-                            "db": self.db.value
+                            "db": self.db.value,
+                            "regression": self.regression.value,
                         },
-                        "output": {
-                            "store_config":True
-                        }
+                        "output": {"store_config": True},
                     },
                 ),
                 (
@@ -158,6 +158,11 @@ class Text(MLWidget):
                 ),
             ]
         )
+
+        if self.regression.value:
+            del body["parameters"]["mllib"]["nclasses"]
+            body["parameters"]["mllib"]["ntargets"] = int(self.ntargets.value)
+
         return body
 
     def _train_body(self):
@@ -172,9 +177,9 @@ class Text(MLWidget):
                         "mllib": {
                             "gpu": True,
                             "gpuid": (
-                                 list(self.gpuid.index)
-                                 if len(self.gpuid.index) > 1
-                                 else self.gpuid.index[0]
+                                list(self.gpuid.index)
+                                if len(self.gpuid.index) > 1
+                                else self.gpuid.index[0]
                             ),
                             "solver": {
                                 "iterations": self.iterations.value,
@@ -207,11 +212,13 @@ class Text(MLWidget):
             ]
         )
 
-        if self.mllib.value == 'xgboost':
-            del body['parameters']['mllib']['solver']
-            body['parameters']['mllib']['iterations'] = self.iterations.value
-        
+        if self.mllib.value == "xgboost":
+            del body["parameters"]["mllib"]["solver"]
+            body["parameters"]["mllib"]["iterations"] = self.iterations.value
+
         if self.ignore_label.value != -1:
-            body['parameters']['mllib']['ignore_label'] = int(self.ignore_label.value)
-            
+            body["parameters"]["mllib"]["ignore_label"] = int(
+                self.ignore_label.value
+            )
+
         return body

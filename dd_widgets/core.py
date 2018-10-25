@@ -158,7 +158,7 @@ class ImageTrainerMixin:
             )
         )
 
-        parameters_output = {'store_config':True}
+        parameters_output = {"store_config": True}
         # print (parameters_input)
         # print (parameters_mllib)
         # pserv = dd.put_service(self.sname.value,model,description,mllib,
@@ -208,7 +208,7 @@ class ImageTrainerMixin:
         if self.ctc.value:
             if self.align.value:
                 parameters_input["align"] = True
-                
+
         assert len(self.gpuid.index) > 0, "Set a GPU index"
         parameters_mllib = {
             "gpu": True,
@@ -304,7 +304,7 @@ def img_handle(
     path: Path,
     segmentation: Optional[Path] = None,
     bbox: Optional[Path] = None,
-    nclasses: int = -1
+    nclasses: int = -1,
 ) -> Tuple[Tuple[int, ...], Image]:
     data = cv2.imread(path.as_posix(), cv2.IMREAD_UNCHANGED)
     _, fname = mkstemp(suffix=".png")
@@ -316,15 +316,14 @@ def img_handle(
         if data.max() >= nclasses > -1:
             raise RuntimeError(
                 "Index {max} present in {filename}".format(
-                    max=data.max(),
-                    filename=segmentation.as_posix()
+                    max=data.max(), filename=segmentation.as_posix()
                 )
             )
     if bbox is not None:
-        
+
         if nclasses > -1:
-            cmap = get_cmap('jet', nclasses-1)
-            
+            cmap = get_cmap("jet", nclasses - 1)
+
         with bbox.open("r") as fh:
             for line in fh.readlines():
                 tag, xmin, ymin, xmax, ymax = (
@@ -333,16 +332,15 @@ def img_handle(
                 if tag >= nclasses > -1:
                     raise RuntimeError(
                         "Index {max} present in {filename}".format(
-                            max=tag,
-                            filename=bbox.as_posix()
+                            max=tag, filename=bbox.as_posix()
                         )
-                    )                    
+                    )
                 rect = patches.Rectangle(
                     (xmin, ymin),
                     xmax - xmin,
                     ymax - ymin,
                     linewidth=2,
-                    edgecolor=cmap(tag) if nclasses > -1 else 'blue',
+                    edgecolor=cmap(tag) if nclasses > -1 else "blue",
                     facecolor="none",
                 )
                 ax.add_patch(rect)

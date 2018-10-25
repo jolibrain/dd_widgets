@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import pandas as pd
 from ipywidgets import HTML
@@ -85,11 +85,9 @@ class CSV(MLWidget):
                             "template": self.template.value,
                             "layers": eval(self.layers.value),
                             "autoencoder": self.autoencoder.value,
-                            "regression": self.regression.value
+                            "regression": self.regression.value,
                         },
-                        "output": {
-                            "store_config":True
-                        }
+                        "output": {"store_config": True},
                     },
                 ),
                 (
@@ -104,14 +102,14 @@ class CSV(MLWidget):
         )
 
         if self.regression.value:
-            del body['parameters']['mllib']['nclasses']
-            body['parameters']['mllib']['ntargets'] = int(self.ntargets.value)
-        
-        if self.mllib.value == 'xgboost':
-            del body['parameters']['mllib']['solver']
-            body['parameters']['mllib']['iterations'] = self.iterations.value
+            del body["parameters"]["mllib"]["nclasses"]
+            body["parameters"]["mllib"]["ntargets"] = int(self.ntargets.value)
+
+        if self.mllib.value == "xgboost":
+            del body["parameters"]["mllib"]["solver"]
+            body["parameters"]["mllib"]["iterations"] = self.iterations.value
             body["parameters"]["mllib"]["db"] = False
-        
+
         if self.lregression.value:
             body["parameters"]["mllib"]["template"] = "lregression"
             del body["parameters"]["mllib"]["layers"]
@@ -137,9 +135,9 @@ class CSV(MLWidget):
                         "mllib": {
                             "gpu": True,
                             "gpuid": (
-                                 list(self.gpuid.index)
-                                 if len(self.gpuid.index) > 1
-                                 else self.gpuid.index[0]
+                                list(self.gpuid.index)
+                                if len(self.gpuid.index) > 1
+                                else self.gpuid.index[0]
                             ),
                             "resume": self.resume.value,
                             "solver": {
@@ -178,16 +176,18 @@ class CSV(MLWidget):
         )
 
         if self.regression.value:
-            del body['parameters']['output']['measure']
-            body['parameters']['output']['measure'] = ['eucll']
-        
+            del body["parameters"]["output"]["measure"]
+            body["parameters"]["output"]["measure"] = ["eucll"]
+
         if self.nclasses.value == 2:
             body["parameters"]["output"]["measure"].append("auc")
 
         if self.autoencoder.value:
             body["parameters"]["output"]["measure"] = ["eucll"]
-            
+
         if self.ignore_label.value != -1:
-            body['parameters']['mllib']['ignore_label'] = int(self.ignore_label.value)
+            body["parameters"]["mllib"]["ignore_label"] = int(
+                self.ignore_label.value
+            )
 
         return body
