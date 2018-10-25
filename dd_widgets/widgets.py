@@ -43,38 +43,44 @@ class SolverDropdown(Dropdown):
         Dropdown.__init__(
             self, *args, options=list(e.name for e in Solver), **kwargs
         )
-        
+
+
 class GPUIndex(tuple):
     pass
 
+
 class GPUSelect(SelectMultiple):
-    def __init__(self, host='localhost', *args, **kwargs):
-        if 'value' in kwargs:
-            kwargs['index'] = kwargs['value']
-            del kwargs['value']
-        if kwargs['index'] is None:
-            kwargs['index'] = tuple()
-        if isinstance(kwargs['index'], int):
-            kwargs['index'] = kwargs['index'], 
-        
+    def __init__(self, host="localhost", *args, **kwargs):
+        if "value" in kwargs:
+            kwargs["index"] = kwargs["value"]
+            del kwargs["value"]
+        if kwargs["index"] is None:
+            kwargs["index"] = tuple()
+        if isinstance(kwargs["index"], int):
+            kwargs["index"] = (kwargs["index"],)
+
         try:
-            c = requests.get('http://{}:12345'.format(host))
+            c = requests.get("http://{}:12345".format(host))
             assert c.status_code == 200
             SelectMultiple.__init__(
-                self, *args, 
+                self,
+                *args,
                 options=list(
                     "GPU {index} ({utilization}%)".format(
-                        index=x['index'], utilization=x['utilization.gpu']
-                    ) for x in c.json()['gpus']
+                        index=x["index"], utilization=x["utilization.gpu"]
+                    )
+                    for x in c.json()["gpus"]
                 ),
                 **kwargs
             )
         except Exception:
             SelectMultiple.__init__(
-                self, *args, 
+                self,
+                *args,
                 options=list(range(8)),  # default, just in case
                 **kwargs
             )
+
 
 # -- Core 'abstract' widget for many tasks
 
@@ -92,7 +98,7 @@ class MLWidget(object):
         float: FloatText,
         bool: Checkbox,
         Solver: SolverDropdown,
-        GPUIndex: GPUSelect
+        GPUIndex: GPUSelect,
     }
 
     # host: TextWidget
@@ -108,27 +114,33 @@ class MLWidget(object):
                     eval(param.name, local_vars),
                     typing_dict[param.name],
                 )
-        
+
     @property
     def status(self):
         return self.status_label.value
-    
+
     @status.setter
-    def status(self, value):            
+    def status(self, value):
         label = []
-        if 'status' in value:
-            label.append('status: {}'.format(value['status']))
-        if 'time' in value:
-            label.append('elapsed time: {}'.format(timedelta(seconds=value['time'])))
-            
+        if "status" in value:
+            label.append("status: {}".format(value["status"]))
+        if "time" in value:
+            label.append(
+                "elapsed time: {}".format(timedelta(seconds=value["time"]))
+            )
+
         self.status_label.value = ", ".join(label)
 
     def widgets_refresh(self, *_):
         with self.output:
-            with open('widgets.log', 'r') as fh:
+            with open("widgets.log", "r") as fh:
                 l = fh.readlines()
-                self.debug.value = "<code style='display: block; white-space: pre-wrap;'>" + "".join(l[-200:]) + "</code>"
-        
+                self.debug.value = (
+                    "<code style='display: block; white-space: pre-wrap;'>"
+                    + "".join(l[-200:])
+                    + "</code>"
+                )
+
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
         # logger.addHandler(log_viewer(self.output),)
@@ -141,7 +153,9 @@ class MLWidget(object):
             description="Progression",
             layout=Layout(margin="18px"),
         )
-        self.status_label = Label(value='Status: unknown', layout=Layout(margin="18px"),)
+        self.status_label = Label(
+            value="Status: unknown", layout=Layout(margin="18px")
+        )
         self.run_button = Button(description="Run training")
         self.info_button = Button(description="Info")
         self.stop_button = Button(description="Delete service")
@@ -162,10 +176,9 @@ class MLWidget(object):
         self.stop_button.on_click(self.stop)
         self.hardclear_button.on_click(self.hardclear)
 
-
         for name, value, type_hint in self.typing_info(local_vars):
             self._add_widget(name, value, type_hint)
-        
+
         self._configuration = VBox(
             self._widgets, layout=Layout(min_width="250px")
         )
@@ -179,10 +192,16 @@ class MLWidget(object):
             [self.output], layout=Layout(min_height="800px", width="590px")
         )
 
-        self.debug = HTML(layout = {"width": "590px", "height": "800px", "border": "none"})
-        self.refresh_button = Button(description='Refresh')
+        self.debug = HTML(
+            layout={"width": "590px", "height": "800px", "border": "none"}
+        )
+        self.refresh_button = Button(description="Refresh")
         self.refresh_button.on_click(self.widgets_refresh)
-        self._tabs.children = [self._img_explorer, info_loghandler.out, VBox([self.refresh_button, self.debug])]
+        self._tabs.children = [
+            self._img_explorer,
+            info_loghandler.out,
+            VBox([self.refresh_button, self.debug]),
+        ]
         self._tabs.set_title(0, "Exploration")
         self._tabs.set_title(1, "Logs (INFO)")
         self._tabs.set_title(2, "widgets.log (tail)")
@@ -221,13 +240,9 @@ class MLWidget(object):
                 value=type_hint() if value is None else (value),
                 layout=Layout(width="100px", margin="4px 2px 4px 2px"),
             )
-            if name == 'gpuid':
-                default_params['host'] = self.host.value
-            setattr(
-                self,
-                name,
-                widget_type(**default_params),
-            )
+            if name == "gpuid":
+                default_params["host"] = self.host.value
+            setattr(self, name, widget_type(**default_params))
 
             self._widgets.append(
                 HBox(
@@ -262,8 +277,8 @@ class MLWidget(object):
                 )
             )
             json_dict = c.json()
-            if 'head' in json_dict:
-                self.status = json_dict['head']
+            if "head" in json_dict:
+                self.status = json_dict["head"]
             print(json.dumps(json_dict, indent=2))
             return json_dict
 
@@ -287,10 +302,10 @@ class MLWidget(object):
             )
 
             json_dict = c.json()
-            if 'head' in json_dict:
-                self.status = json_dict['head']
+            if "head" in json_dict:
+                self.status = json_dict["head"]
             print(json.dumps(json_dict, indent=2))
-            #return json_dict
+            # return json_dict
 
     def create_service(self, *_):
         info_loghandler.out.clear_output()
@@ -341,8 +356,8 @@ class MLWidget(object):
                 )
                 raise RuntimeError(
                     "Error code {code}: {msg}".format(
-                        code=c.json()['status']['dd_code'],
-                        msg=c.json()['status']['dd_msg']
+                        code=c.json()["status"]["dd_code"],
+                        msg=c.json()["status"]["dd_msg"],
                     )
                 )
             else:
@@ -353,8 +368,8 @@ class MLWidget(object):
                 )
 
             json_dict = c.json()
-            if 'head' in json_dict:
-                self.status = json_dict['head']
+            if "head" in json_dict:
+                self.status = json_dict["head"]
             print(json.dumps(json_dict, indent=2))
             return json_dict
 
@@ -414,8 +429,8 @@ class MLWidget(object):
                 )
                 raise RuntimeError(
                     "Error code {code}: {msg}".format(
-                        code=c.json()['status']['dd_code'],
-                        msg=c.json()['status']['dd_msg']
+                        code=c.json()["status"]["dd_code"],
+                        msg=c.json()["status"]["dd_msg"],
                     )
                 )
             else:
@@ -445,24 +460,23 @@ class MLWidget(object):
             )
 
             json_dict = c.json()
-            if 'head' in json_dict:
-                self.status = json_dict['head']
+            if "head" in json_dict:
+                self.status = json_dict["head"]
             print(json.dumps(json_dict, indent=2))
-        
+
             self.value = self.iterations.value
             self.pbar.bar_style = "info"
             self.pbar.max = self.iterations.value
 
             thread = threading.Thread(target=self.update_loop)
             thread.start()
-            
-                
+
     def update_loop(self):
-        
+
         while True:
             info = self.info(print_output=False)
             self.pbar.bar_style = ""
-            status = info['head']['status']
+            status = info["head"]["status"]
 
             if status == "finished":
                 self.pbar.value = self.iterations.value
@@ -476,7 +490,7 @@ class MLWidget(object):
 
     def on_finished(self, info):
         pass
-            
+
     def info(self, print_output=True):
         with self.output:
             # TODO job number
@@ -495,10 +509,10 @@ class MLWidget(object):
                     sname=self.sname, json=json.dumps(c.json(), indent=2)
                 )
             )
-            
+
             json_dict = c.json()
-            if 'head' in json_dict:
-                self.status = json_dict['head']
+            if "head" in json_dict:
+                self.status = json_dict["head"]
             if print_output:
                 print(json.dumps(json_dict, indent=2))
             return json_dict
