@@ -6,6 +6,7 @@ from .detection import Detection  # noqa: F401
 from .ocr import OCR  # noqa: F401
 from .segmentation import Segmentation  # noqa: F401
 from .text import Text  # noqa: F401
+from .tsne_csv import TSNE_CSV  # noqa: F401
 from .widgets import info_loghandler
 
 # -- Logging --

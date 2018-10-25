@@ -467,12 +467,16 @@ class MLWidget(object):
             if status == "finished":
                 self.pbar.value = self.iterations.value
                 self.pbar.bar_style = "success"
+                self.on_finished(info)
                 break
 
             self.pbar.value = info["body"]["measure"].get("iteration", 0)
 
             time.sleep(1)
 
+    def on_finished(self, info):
+        pass
+            
     def info(self, print_output=True):
         with self.output:
             # TODO job number
