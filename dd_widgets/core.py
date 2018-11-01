@@ -267,11 +267,15 @@ class ImageTrainerMixin:
                     "eucll",
                 ]
             }
-        elif self.ctc:
-            parameters_output = {"measure": ["acc"]}
         else:
             parameters_output = {"measure": ["mcll", "f1", "acc-5"]}
 
+        # special cases
+        if self.ctc.value:
+            parameters_output = {"measure": ["acc"]}
+        elif self.autoencoder.value:
+            parameters_output = {"measure": ["eucll"]}
+        
         parameters_output["target_repository"] = ""
 
         body = OrderedDict(
