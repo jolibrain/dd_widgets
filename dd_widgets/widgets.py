@@ -525,14 +525,14 @@ class MLWidget(object):
                         f.stem for f in Path(self.training_repo.value).glob("*")
                     )
                 )
+                self.train_labels.rows = min(10, len(self.train_labels.options))
+                
             if self.testing_repo.value != "":
                 self.test_labels.options = tuple(
                     sorted(
                         f.stem for f in Path(self.testing_repo.value).glob("*")
                     )
                 )
-
-            self.train_labels.rows = min(10, len(self.train_labels.options))
-            self.test_labels.rows = min(10, len(self.test_labels.options))
+                self.test_labels.rows = min(10, len(self.test_labels.options))
             if self.nclasses.value == -1:
                 self.nclasses.value = str(len(self.train_labels.options))

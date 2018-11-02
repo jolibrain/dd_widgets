@@ -152,6 +152,13 @@ class ImageTrainerMixin:
         if self.__class__.__name__ == "Segmentation":
             parameters_mllib["loss"] = self.loss.value
 
+        if self.__class__.__name__ == "Regression":
+            del parameters_mllib["nclasses"]
+            parameters_mllib["ntargets"] = int(self.ntargets.value)
+            parameters_input["db"] = False
+            parameters_mllib["db"] = False
+            parameters_mllib["finetuning"] = False
+
         logging.info(
             "Parameters mllib: {}".format(
                 json.dumps(parameters_input, indent=2)
@@ -254,6 +261,8 @@ class ImageTrainerMixin:
             parameters_output = {"measure": ["map"]}
         elif self.__class__.__name__ == "OCR":
             parameters_output = {"measure": ["acc"]}
+        elif self.__class__.__name__ == "Regression":
+            parameters_output = {"measure": ["eucll"]}
         elif self.multi_label.value and self.regression.value:
             parameters_output = {
                 "measure": [
@@ -277,6 +286,7 @@ class ImageTrainerMixin:
             parameters_output = {"measure": ["eucll"]}
         
         parameters_output["target_repository"] = ""
+
 
         body = OrderedDict(
             [
@@ -309,13 +319,17 @@ def img_handle(
     segmentation: Optional[Path] = None,
     bbox: Optional[Path] = None,
     nclasses: int = -1,
+    imread_args: tuple = tuple()
 ) -> Tuple[Tuple[int, ...], Image]:
-    data = cv2.imread(path.as_posix(), cv2.IMREAD_UNCHANGED)
+    
+    if not path.exists():
+        raise ValueError("File {} does not exist".format(path))
+    data = cv2.imread(path.as_posix(), *imread_args)
     _, fname = mkstemp(suffix=".png")
     fig, ax = plt.subplots()
     ax.imshow(data)
     if segmentation is not None:
-        data = cv2.imread(segmentation.as_posix(), cv2.IMREAD_UNCHANGED)
+        data = cv2.imread(segmentation.as_posix(), *imread_args)
         ax.imshow(data, alpha=.8)
         if data.max() >= nclasses > -1:
             raise RuntimeError(
