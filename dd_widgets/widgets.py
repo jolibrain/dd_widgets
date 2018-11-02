@@ -85,7 +85,7 @@ class GPUSelect(SelectMultiple):
 # -- Core 'abstract' widget for many tasks
 
 
-class MLWidget(object):
+class MLWidget:
 
     _fields = {  # typing: Dict[str, str]
         "sname": "Model name",
@@ -144,6 +144,7 @@ class MLWidget(object):
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
         # logger.addHandler(log_viewer(self.output),)
+        super().__init__(*args)
 
         self.sname = sname
         self.output = Output(layout=Layout(max_width="650px"))
@@ -526,7 +527,7 @@ class MLWidget(object):
                     )
                 )
                 self.train_labels.rows = min(10, len(self.train_labels.options))
-                
+
             if self.testing_repo.value != "":
                 self.test_labels.options = tuple(
                     sorted(

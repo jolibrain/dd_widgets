@@ -15,9 +15,122 @@ from matplotlib import patches
 from matplotlib.cm import get_cmap
 
 import cv2
+from ipywidgets import Button, HBox, SelectMultiple
+
+from .widgets import MLWidget
 
 
-class ImageTrainerMixin:
+class ImageTrainerMixin(MLWidget):
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+
+        p = Path(self.training_repo.value)  # type: ignore
+
+        if not p.exists():
+            raise RuntimeError("Path {} does not exist".format(p))
+
+        if p.is_dir():
+
+            self.train_labels = SelectMultiple(
+                options=[],
+                value=[],
+                description="Training labels",
+                disabled=False,
+            )
+
+            self.test_labels = SelectMultiple(
+                options=[],
+                value=[],
+                description="Testing labels",
+                disabled=False,
+            )
+
+            self.testing_repo.observe(  # type: ignore
+                self.update_label_list, names="value"
+            )
+            self.training_repo.observe(  # type: ignore
+                self.update_label_list, names="value"
+            )
+
+            self.train_labels.observe(self.update_train_dir_list, names="value")
+            self.test_labels.observe(self.update_test_dir_list, names="value")
+            self.file_list.observe(self.display_img, names="value")
+
+        else:
+            self.train_labels = Button(
+                description=Path(self.training_repo.value).name  # type: ignore
+            )
+            self.test_labels = Button(
+                description=Path(self.testing_repo.value).name  # type: ignore
+            )
+
+            self.train_labels.on_click(self.update_train_file_list)
+            self.test_labels.on_click(self.update_test_file_list)
+            self.file_list.observe(self.display_img, names="value")
+
+        self._img_explorer.children = [
+            HBox([HBox([self.train_labels, self.test_labels])]),
+            self.file_list,
+            self.output,
+        ]
+
+        self.update_label_list(())
+
+    def update_train_file_list(self, *args):
+        with self.output:
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): Path(x.split()[1])
+                for x in Path(self.training_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
+
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
+
+    def update_test_file_list(self, *args):
+        with self.output:
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): Path(x.split()[1])
+                for x in Path(self.testing_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
+
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
+
+    def update_train_dir_list(self, *args):
+        with self.output:
+            if len(self.train_labels.value) == 0:
+                return
+            directory = (
+                Path(self.training_repo.value) / self.train_labels.value[0]
+            )
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+            ]
+            self.test_labels.value = []
+
+    def update_test_dir_list(self, *args):
+        with self.output:
+            if len(self.test_labels.value) == 0:
+                return
+            directory = (
+                Path(self.testing_repo.value) / self.test_labels.value[0]
+            )
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(directory.glob("**/*"), 10)
+            ]
+            self.train_labels.value = []
+
     def _create_service_body(self):
         width = int(self.img_width.value)
         height = int(self.img_height.value)

@@ -3,41 +3,11 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from ipywidgets import Button, HBox
-
-from .core import ImageTrainerMixin, img_handle, sample_from_iterable
-from .widgets import GPUIndex, MLWidget, Solver
+from .core import ImageTrainerMixin, img_handle
+from .widgets import GPUIndex, Solver
 
 
-class Regression(MLWidget, ImageTrainerMixin):
-    def update_train_file_list(self, *args):
-        with self.output:
-            # print (Path(self.training_repo.value).read_text().split('\n'))
-            self.file_dict = {
-                Path(x.split()[0]): Path(x.split()[1])
-                for x in Path(self.training_repo.value).read_text().split("\n")
-                if len(x.split()) >= 2
-            }
-
-            self.file_list.options = [
-                fh.as_posix()
-                for fh in sample_from_iterable(self.file_dict.keys(), 10)
-            ]
-
-    def update_test_file_list(self, *args):
-        with self.output:
-            # print (Path(self.training_repo.value).read_text().split('\n'))
-            self.file_dict = {
-                Path(x.split()[0]): Path(x.split()[1])
-                for x in Path(self.testing_repo.value).read_text().split("\n")
-                if len(x.split()) >= 2
-            }
-
-            self.file_list.options = [
-                fh.as_posix()
-                for fh in sample_from_iterable(self.file_dict.keys(), 10)
-            ]
-
+class Regression(ImageTrainerMixin):
     def display_img(self, args):
         self.output.clear_output()
         with self.output:
@@ -105,25 +75,3 @@ class Regression(MLWidget, ImageTrainerMixin):
     ) -> None:
 
         super().__init__(sname, locals())
-
-        self.train_labels = Button(
-            description=Path(self.training_repo.value).name  # type: ignore
-        )
-        self.test_labels = Button(
-            description=Path(self.testing_repo.value).name  # type: ignore
-        )
-
-        # self.testing_repo.observe(self.update_test_button, names="value")
-        # self.training_repo.observe(self.update_train_button, names="value")
-
-        self.train_labels.on_click(self.update_train_file_list)
-        self.test_labels.on_click(self.update_test_file_list)
-        self.file_list.observe(self.display_img, names="value")
-
-        self._img_explorer.children = [
-            HBox([HBox([self.train_labels, self.test_labels])]),
-            self.file_list,
-            self.output,
-        ]
-
-        self.update_label_list(())
