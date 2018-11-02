@@ -8,6 +8,7 @@ from ipywidgets import Button, HBox, SelectMultiple
 from .core import ImageTrainerMixin, img_handle, sample_from_iterable
 from .widgets import MLWidget, Solver, GPUIndex
 
+
 class ClassificationTxt(MLWidget, ImageTrainerMixin):
 
     def update_train_file_list(self, *args):
@@ -38,8 +39,6 @@ class ClassificationTxt(MLWidget, ImageTrainerMixin):
                 for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
 
-            
-            
     def display_img(self, args):
         self.output.clear_output()
         with self.output:
@@ -106,7 +105,7 @@ class ClassificationTxt(MLWidget, ImageTrainerMixin):
     ) -> None:
 
         super().__init__(sname, locals())
-        
+
         self.train_labels = Button(
             description=Path(self.training_repo.value).name  # type: ignore
         )

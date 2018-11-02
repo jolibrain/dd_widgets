@@ -67,6 +67,7 @@ class ImageTrainerMixin:
         if self.multi_label.value:
             parameters_input["multi_label"] = True
             parameters_input["db"] = False
+
         if self.ctc.value:
             parameters_input["ctc"] = True
 
@@ -284,9 +285,8 @@ class ImageTrainerMixin:
             parameters_output = {"measure": ["acc"]}
         elif self.autoencoder.value:
             parameters_output = {"measure": ["eucll"]}
-        
-        parameters_output["target_repository"] = ""
 
+        parameters_output["target_repository"] = ""
 
         body = OrderedDict(
             [
@@ -319,9 +319,9 @@ def img_handle(
     segmentation: Optional[Path] = None,
     bbox: Optional[Path] = None,
     nclasses: int = -1,
-    imread_args: tuple = tuple()
+    imread_args: tuple = tuple(),
 ) -> Tuple[Tuple[int, ...], Image]:
-    
+
     if not path.exists():
         raise ValueError("File {} does not exist".format(path))
     data = cv2.imread(path.as_posix(), *imread_args)
