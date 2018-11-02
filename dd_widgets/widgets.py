@@ -490,7 +490,8 @@ class MLWidget:
             time.sleep(1)
 
     def on_finished(self, info):
-        pass
+        # a minima...
+        self.last_info = info
 
     def info(self, print_output=True):
         with self.output:
