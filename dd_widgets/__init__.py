@@ -8,6 +8,7 @@ from .regression import Regression  # noqa: F401
 from .segmentation import Segmentation  # noqa: F401
 from .text import Text  # noqa: F401
 from .tsne_csv import TSNE_CSV  # noqa: F401
+from .tsne_txt import TSNE_Text  # noqa: F401
 from .widgets import info_loghandler
 
 # -- Logging --
