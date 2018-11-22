@@ -66,6 +66,17 @@ class Detection(ImageTrainerMixin):
         solver_type: Solver = "SGD",
         noise_prob: float = 0.001,
         distort_prob: float = 0.5,
+        # -- geometry --
+        all_effects: bool = False,
+        persp_horizontal: bool = False,
+        persp_vertical: bool = False,
+        zoom_out: bool = False,
+        zoom_in: bool = False,
+        pad_mode: str = "",
+        persp_factor: str = "",
+        zoom_factor: str = "",
+        prob: str = "",
+        # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
         weights: Path = None,
