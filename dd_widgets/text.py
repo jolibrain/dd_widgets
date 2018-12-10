@@ -32,6 +32,7 @@ class Text(MLWidget):
         iterations: int = 25000,
         test_interval: int = 1000,
         base_lr: float = 0.001,
+        resume: bool = False,
         solver_type: Solver = "SGD",
         batch_size: int = 128,
         shuffle: bool = True,
@@ -46,7 +47,7 @@ class Text(MLWidget):
         read_forward: bool = True,
         alphabet: str = alpha,
         sparse: bool = False,
-        template: str = "mlp",
+        template: Optional[str] = None,
         activation: str = "relu",
         embedding: bool = False,
         target_repository: str = ""
@@ -176,6 +177,7 @@ class Text(MLWidget):
                     {
                         "mllib": {
                             "gpu": True,
+                            "resume": self.resume.value,
                             "gpuid": (
                                 list(self.gpuid.index)
                                 if len(self.gpuid.index) > 1
