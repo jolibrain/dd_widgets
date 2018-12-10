@@ -50,7 +50,7 @@ class OCR(ImageTrainerMixin):
         template: Optional[str] = None,
         mirror: bool = False,
         rotate: bool = False,
-        scale: bool = False,
+        scale: float = 1.0,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,
