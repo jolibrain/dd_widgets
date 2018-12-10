@@ -124,7 +124,7 @@ class Text(MLWidget):
         body = OrderedDict(
             [
                 ("mllib", self.mllib.value),
-                ("description", "newsgroup classification service"),
+                ("description", "text classification service"),
                 ("type", "supervised"),
                 (
                     "parameters",
