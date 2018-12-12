@@ -31,6 +31,7 @@ class Text(MLWidget):
         layers: List[str] = [],
         iterations: int = 25000,
         test_interval: int = 1000,
+        snapshot_interval: int = 1000,
         base_lr: float = 0.001,
         resume: bool = False,
         solver_type: Solver = "SGD",
@@ -186,6 +187,7 @@ class Text(MLWidget):
                             "solver": {
                                 "iterations": self.iterations.value,
                                 "test_interval": self.test_interval.value,
+                                "snapshot_interval": self.snapshot_interval.value,
                                 "test_initialization": False,
                                 "base_lr": self.base_lr.value,
                                 "solver_type": self.solver_type.value,
