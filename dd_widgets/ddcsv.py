@@ -1,14 +1,14 @@
-from collections import OrderedDict
 from pathlib import Path
 from typing import List, Optional
 
 import pandas as pd
 from ipywidgets import HTML
 
-from .widgets import MLWidget, Solver, GPUIndex
+from .core import TextTrainerMixin
+from .widgets import Solver, GPUIndex
 
 
-class CSV(MLWidget):
+class CSV(TextTrainerMixin):
     def __init__(
         self,
         sname: str,
@@ -64,130 +64,24 @@ class CSV(MLWidget):
         )
         self._img_explorer.children = [self._displays, self.output]
 
-    def _create_service_body(self):
-        body = OrderedDict(
-            [
-                ("mllib", self.mllib.value),
-                ("description", self.sname),
-                ("type", "supervised"),
-                (
-                    "parameters",
-                    {
-                        "input": {
-                            "connector": "csv",
-                            "labels": self.csv_label.value,
-                            "db": self.db.value,
-                        },
-                        "mllib": {
-                            "nclasses": self.nclasses.value,
-                            "activation": self.activation.value,
-                            "db": self.db.value,
-                            "template": self.template.value,
-                            "layers": eval(self.layers.value),
-                            "autoencoder": self.autoencoder.value,
-                            "regression": self.regression.value,
-                        },
-                        "output": {"store_config": True},
-                    },
-                ),
-                (
-                    "model",
-                    {
-                        "templates": "../templates/caffe/",
-                        "repository": self.model_repo.value,
-                        "create_repository": True,
-                    },
-                ),
-            ]
-        )
+    def _make_parameters_input(self):
+        return {
+            "connector": "csv",
+            "labels": self.csv_label.value,
+            "db": self.db.value,
+        }
 
-        if self.regression.value:
-            del body["parameters"]["mllib"]["nclasses"]
-            body["parameters"]["mllib"]["ntargets"] = int(self.ntargets.value)
-
-        if self.mllib.value == "xgboost":
-            del body["parameters"]["mllib"]["solver"]
-            body["parameters"]["mllib"]["iterations"] = self.iterations.value
-            body["parameters"]["mllib"]["db"] = False
-
-        if self.lregression.value:
-            body["parameters"]["mllib"]["template"] = "lregression"
-            del body["parameters"]["mllib"]["layers"]
-        else:
-            body["parameters"]["mllib"]["dropout"] = self.dropout.value
-
-        if self.finetune.value:
-            body["parameters"]["mllib"]["finetuning"] = True
-            body["parameters"]["mllib"]["weights"] = self.weights.value
-
-        return body
-
-    def _train_body(self):
-        assert len(self.gpuid.index) > 0, "Set a GPU index"
-
-        body = OrderedDict(
-            [
-                ("service", self.sname),
-                ("async", True),
-                (
-                    "parameters",
-                    {
-                        "mllib": {
-                            "gpu": True,
-                            "gpuid": (
-                                list(self.gpuid.index)
-                                if len(self.gpuid.index) > 1
-                                else self.gpuid.index[0]
-                            ),
-                            "resume": self.resume.value,
-                            "solver": {
-                                "iterations": self.iterations.value,
-                                "iter_size": 1,
-                                "test_interval": self.test_interval.value,
-                                "test_initialization": False,
-                                "base_lr": self.base_lr.value,
-                                "solver_type": self.solver_type.value,
-                            },
-                            "net": {
-                                "batch_size": self.batch_size.value,
-                                "test_batch_size": self.test_batch_size.value,
-                            },
-                        },
-                        "input": {
-                            "label_offset": self.csv_label_offset.value,
-                            "label": self.csv_label.value,
-                            "id": self.csv_id.value,
-                            "separator": self.csv_separator.value,
-                            "shuffle": self.shuffle.value,
-                            "test_split": self.tsplit.value,
-                            "scale": self.scale.value,
-                            "db": self.db.value,
-                            "ignore": eval(self.csv_ignore.value),
-                            "categoricals": eval(self.csv_categoricals.value),
-                            "autoencoder": self.autoencoder.value,
-                        },
-                        "output": {
-                            "measure": ["cmdiag", "cmfull", "mcll", "f1"]
-                        },
-                    },
-                ),
-                ("data", [self.training_repo.value, self.testing_repo.value]),
-            ]
-        )
-
-        if self.regression.value:
-            del body["parameters"]["output"]["measure"]
-            body["parameters"]["output"]["measure"] = ["eucll"]
-
-        if self.nclasses.value == 2:
-            body["parameters"]["output"]["measure"].append("auc")
-
-        if self.autoencoder.value:
-            body["parameters"]["output"]["measure"] = ["eucll"]
-
-        if self.ignore_label.value != -1:
-            body["parameters"]["mllib"]["ignore_label"] = int(
-                self.ignore_label.value
-            )
-
-        return body
+    def _train_parameters_input(self):
+        return {
+            "autoencoder": self.autoencoder.value,
+            "categoricals": eval(self.csv_categoricals.value),
+            "db": self.db.value,
+            "id": self.csv_id.value,
+            "ignore": eval(self.csv_ignore.value),
+            "label_offset": self.csv_label_offset.value,
+            "label": self.csv_label.value,
+            "scale": self.scale.value,
+            "separator": self.csv_separator.value,
+            "shuffle": self.shuffle.value,
+            "test_split": self.tsplit.value,
+        }
