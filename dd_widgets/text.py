@@ -161,6 +161,9 @@ class Text(MLWidget):
             ]
         )
 
+        if self.template.value is not None:
+            del body["parameters"]["mllib"]["template"]
+
         if self.regression.value:
             del body["parameters"]["mllib"]["nclasses"]
             body["parameters"]["mllib"]["ntargets"] = int(self.ntargets.value)
