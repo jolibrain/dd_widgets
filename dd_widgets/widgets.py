@@ -18,7 +18,6 @@ from ipywidgets import (HTML, Button, Checkbox, Dropdown, FloatText, HBox,
 from ipywidgets import Text as TextWidget
 from ipywidgets import VBox
 
-from . import logfile_name
 from .loghandler import OutputWidgetHandler
 
 # fmt: on
@@ -133,6 +132,7 @@ class MLWidget:
 
     def widgets_refresh(self, *_):
         with self.output:
+            from . import logfile_name
             with open(logfile_name, "r") as fh:
                 l = fh.readlines()
                 self.debug.value = (
@@ -142,6 +142,8 @@ class MLWidget:
                 )
 
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
+
+        from . import logfile_name
 
         # logger.addHandler(log_viewer(self.output),)
         super().__init__(*args)
