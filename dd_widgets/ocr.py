@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from .core import ImageTrainerMixin, img_handle
+from .core import ImageTrainerMixin, img_handle, sample_from_iterable
 from .widgets import GPUIndex, Solver
 
 
@@ -88,3 +88,31 @@ class OCR(ImageTrainerMixin):
     ) -> None:
 
         super().__init__(sname, locals())
+
+    def update_train_file_list(self, *args):
+        with self.output:
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): x.split()[1:]
+                for x in Path(self.training_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
+
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
+
+    def update_test_file_list(self, *args):
+        with self.output:
+            # print (Path(self.training_repo.value).read_text().split('\n'))
+            self.file_dict = {
+                Path(x.split()[0]): x.split()[1:]
+                for x in Path(self.testing_repo.value).read_text().split("\n")
+                if len(x.split()) >= 2
+            }
+
+            self.file_list.options = [
+                fh.as_posix()
+                for fh in sample_from_iterable(self.file_dict.keys(), 10)
+            ]
