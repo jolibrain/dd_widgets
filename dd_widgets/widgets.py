@@ -2,9 +2,8 @@
 
 import json
 import logging
-import time
 import threading
-
+import time
 from collections import OrderedDict
 from datetime import timedelta
 from enum import Enum
@@ -19,6 +18,7 @@ from ipywidgets import (HTML, Button, Checkbox, Dropdown, FloatText, HBox,
 from ipywidgets import Text as TextWidget
 from ipywidgets import VBox
 
+from . import logfile_name
 from .loghandler import OutputWidgetHandler
 
 # fmt: on
@@ -133,7 +133,7 @@ class MLWidget:
 
     def widgets_refresh(self, *_):
         with self.output:
-            with open("widgets.log", "r") as fh:
+            with open(logfile_name, "r") as fh:
                 l = fh.readlines()
                 self.debug.value = (
                     "<code style='display: block; white-space: pre-wrap;'>"
@@ -205,7 +205,7 @@ class MLWidget:
         ]
         self._tabs.set_title(0, "Exploration")
         self._tabs.set_title(1, "Logs (INFO)")
-        self._tabs.set_title(2, "widgets.log (tail)")
+        self._tabs.set_title(2, f"{logfile_name.split('/')[-1]} (tail)")
 
         self.file_list = SelectMultiple(
             options=[],
