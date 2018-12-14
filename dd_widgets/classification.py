@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Optional
 
+import cv2
 from IPython.display import display
 
 from .core import ImageTrainerMixin, img_handle
@@ -11,10 +12,13 @@ class Classification(ImageTrainerMixin):
     ctc = False
 
     def display_img(self, args):
+        imread_args = tuple()
+        if self.unchanged_data:
+            imread_args = cv2.IMREAD_UNCHANGED,
         self.output.clear_output()
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path))
+                shape, img = img_handle(Path(path), imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":

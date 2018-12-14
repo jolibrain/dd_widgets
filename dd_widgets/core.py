@@ -295,6 +295,9 @@ class ImageTrainerMixin(MLWidget):
             "db": True,
         }
 
+        if self.unchanged_data:
+            parameters_input['unchanged_data'] = True
+
         if self.__class__.__name__ == "Detection":
             parameters_input["bbox"] = True
 
