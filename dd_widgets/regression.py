@@ -3,7 +3,8 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from .core import ImageTrainerMixin, img_handle
+from .core import JSONType
+from .mixins import ImageTrainerMixin, img_handle
 from .widgets import GPUIndex, Solver
 
 
@@ -75,3 +76,21 @@ class Regression(ImageTrainerMixin):
     ) -> None:
 
         super().__init__(sname, locals())
+
+    def _create_parameters_input(self) -> JSONType:
+        dic = super()._create_parameters_input()
+        dic["db"] = False
+        return dic
+
+    def _create_parameters_mllib(self) -> JSONType:
+        dic = super()._create_parameters_mllib()
+        del dic["nclasses"]
+        dic["db"] = False
+        dic["ntargets"] = int(self.ntargets.value)
+        dic["finetuning"] = False
+        return dic
+
+    def _train_parameters_output(self) -> JSONType:
+        dic = super()._train_parameters_output()
+        dic["measure"] = ["eucll"]
+        return dic

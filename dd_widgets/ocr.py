@@ -3,7 +3,8 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from .core import ImageTrainerMixin, img_handle, sample_from_iterable
+from .core import JSONType
+from .mixins import ImageTrainerMixin, img_handle, sample_from_iterable
 from .widgets import GPUIndex, Solver
 
 
@@ -116,3 +117,8 @@ class OCR(ImageTrainerMixin):
                 fh.as_posix()
                 for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
+
+    def _train_parameters_output(self) -> JSONType:
+        dic = super()._train_parameters_output()
+        dic['measure'] = ["acc"]
+        return dic

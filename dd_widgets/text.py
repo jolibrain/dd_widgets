@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from ipywidgets import HBox, SelectMultiple
 
-from .core import TextTrainerMixin, sample_from_iterable
+from .mixins import TextTrainerMixin, sample_from_iterable
 from .widgets import Solver, GPUIndex
 
 alpha = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:’\“/\_@#$%^&*~`+-=<>()[]{}"
@@ -119,7 +119,7 @@ class Text(TextTrainerMixin):
             ]
             self.train_labels.value = []
 
-    def _make_parameters_input(self):
+    def _create_parameters_input(self):
         return {
             "connector": "txt",
             "characters": self.characters.value,

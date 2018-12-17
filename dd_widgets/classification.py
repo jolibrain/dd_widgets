@@ -4,7 +4,8 @@ from typing import List, Optional
 import cv2
 from IPython.display import display
 
-from .core import ImageTrainerMixin, img_handle
+from .core import JSONType
+from .mixins import ImageTrainerMixin, img_handle
 from .widgets import GPUIndex, Solver
 
 
@@ -18,7 +19,7 @@ class Classification(ImageTrainerMixin):
         self.output.clear_output()
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path), imread_args)
+                shape, img = img_handle(Path(path), imread_args=imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
@@ -91,3 +92,8 @@ class Classification(ImageTrainerMixin):
     ) -> None:
 
         super().__init__(sname, locals())
+
+    def _train_parameters_output(self) -> JSONType:
+        dic = super()._train_parameters_output()
+        dic['measure'] = ["mcll", "f1", "acc-5"]
+        return dic

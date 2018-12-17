@@ -3,7 +3,8 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from .core import ImageTrainerMixin, img_handle
+from .core import JSONType
+from .mixins import ImageTrainerMixin, img_handle
 from .widgets import GPUIndex, Solver
 
 
@@ -92,3 +93,14 @@ class Detection(ImageTrainerMixin):
     ) -> None:
 
         super().__init__(sname, locals())
+
+    def _train_parameters_input(self) -> JSONType:
+        dic = super()._train_parameters_input()
+        dic["db_width"] = self.db_width.value
+        dic["db_height"] = self.db_height.value
+        return dic
+
+    def _train_parameters_output(self) -> JSONType:
+        dic = super()._train_parameters_output()
+        dic['measure'] = ['map']
+        return dic

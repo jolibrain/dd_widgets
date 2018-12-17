@@ -4,7 +4,7 @@ from typing import List, Optional
 import pandas as pd
 from ipywidgets import HTML
 
-from .core import TextTrainerMixin
+from .mixins import TextTrainerMixin
 from .widgets import Solver, GPUIndex
 
 
@@ -64,7 +64,7 @@ class CSV(TextTrainerMixin):
         )
         self._img_explorer.children = [self._displays, self.output]
 
-    def _make_parameters_input(self):
+    def _create_parameters_input(self):
         return {
             "connector": "csv",
             "labels": self.csv_label.value,

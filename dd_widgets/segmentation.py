@@ -3,8 +3,9 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from .core import ImageTrainerMixin, img_handle
+from .mixins import ImageTrainerMixin, img_handle
 from .widgets import GPUIndex, Solver
+from .core import JSONType
 
 
 class Segmentation(ImageTrainerMixin):
@@ -98,3 +99,18 @@ class Segmentation(ImageTrainerMixin):
                 # display(Image(path))
                 # integrate THIS : https://github.com/alx/react-bounding-box
                 # (cv2.imread(self.file_dict[Path(path)].as_posix()))
+
+    def _create_parameters_mllib(self) -> JSONType:
+        dic = super()._create_parameters_mllib()
+        dic["loss"] = self.loss.value
+        return dic
+
+    def _train_parameters_input(self) -> JSONType:
+        dic = super()._train_parameters_input()
+        dic["segmentation"] = True
+        return dic
+
+    def _train_parameters_output(self) -> JSONType:
+        dic = super()._train_parameters_output()
+        dic["measure"] = ["acc"]
+        return dic

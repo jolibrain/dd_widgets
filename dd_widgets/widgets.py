@@ -1,118 +1,71 @@
 # fmt: off
 
 import json
-import logging
-import threading
-import time
 from collections import OrderedDict
 from datetime import timedelta
-from enum import Enum
 from inspect import signature
 from pathlib import Path
-from typing import Any, Dict, get_type_hints
+from typing import Any, Dict, List, Optional, get_type_hints
 
-import requests
-from ipywidgets import (HTML, Button, Checkbox, Dropdown, FloatText, HBox,
-                        IntProgress, IntText, Label, Layout, Output,
-                        SelectMultiple, Tab)
+from ipywidgets import (HTML, Button, Checkbox, FloatText, HBox, IntProgress,
+                        IntText, Label, Layout, Output, SelectMultiple, Tab)
 from ipywidgets import Text as TextWidget
 from ipywidgets import VBox
 
+from .core import JSONType, TalkWithDD
 from .loghandler import OutputWidgetHandler
+from .types import GPUIndex, GPUSelect, Solver, SolverDropdown
 
 # fmt: on
 
-info_loghandler = OutputWidgetHandler()
 
-sname_url = "http://{host}:{port}/{path}/services/{sname}"
+class RedirectOutput:
+    """
+    This class provide a decorator to redirect the output of functions to a
+    specific output widget.
+    """
 
+    def __init__(
+        self,
+        output: Output,
+        info_loghandler: Optional[OutputWidgetHandler] = None,
+    ) -> None:
+        self.output = output
+        self.info_loghandler = info_loghandler
 
-class Solver(Enum):
-    SGD = "SGD"
-    ADAM = "ADAM"
-    RMSPROP = "RMSPROP"
-    AMSGRAD = "AMSGRAD"
-    ADAGRAD = "ADAGRAD"
-    ADADELTA = "ADADELTA"
-    NESTEROV = "NESTEROV"
+    def __call__(self, fun):
+        def fun_wrapper(*args, **kwargs):
+            if self.info_loghandler is not None:
+                self.info_loghandler.out.clear_output()
+            self.output.clear_output()
+            with self.output:
+                res = fun(*args, **kwargs)
+                try:
+                    print(json.dumps(res, indent=2))
+                except Exception:
+                    pass
+                return res
 
-
-class SolverDropdown(Dropdown):
-    def __init__(self, *args, **kwargs):
-        Dropdown.__init__(
-            self, *args, options=list(e.name for e in Solver), **kwargs
-        )
-
-
-class GPUIndex(tuple):
-    pass
-
-
-class GPUSelect(SelectMultiple):
-    def __init__(self, host="localhost", *args, **kwargs):
-        if "value" in kwargs:
-            kwargs["index"] = kwargs["value"]
-            del kwargs["value"]
-        if kwargs["index"] is None:
-            kwargs["index"] = tuple()
-        if isinstance(kwargs["index"], int):
-            kwargs["index"] = (kwargs["index"],)
-
-        try:
-            c = requests.get("http://{}:12345".format(host))
-            assert c.status_code == 200
-            SelectMultiple.__init__(
-                self,
-                *args,
-                options=list(
-                    "GPU {index} ({utilization}%)".format(
-                        index=x["index"], utilization=x["utilization.gpu"]
-                    )
-                    for x in c.json()["gpus"]
-                ),
-                **kwargs
-            )
-        except Exception:
-            SelectMultiple.__init__(
-                self,
-                *args,
-                options=list(range(8)),  # default, just in case
-                **kwargs
-            )
+        return fun_wrapper
 
 
 # -- Core 'abstract' widget for many tasks
 
 
-class MLWidget:
+class BasicWidget:
+    """This BasicWidget contains the most basicstest functionalities."""
 
-    _fields = {  # typing: Dict[str, str]
-        "sname": "Model name",
-        "training_repo": "Training directory",
-        "testing_repo": "Testing directory",
-    }
+    def __init__(self, *args, **kwargs):
+        self.status_label = Label(
+            value="Status: unknown", layout=Layout(margin="18px")
+        )
+        self.debug = HTML(
+            layout={"width": "590px", "height": "800px", "border": "none"}
+        )
+        super().__init__(*args, **kwargs)
 
-    _widget_type = {
-        int: IntText,
-        float: FloatText,
-        bool: Checkbox,
-        Solver: SolverDropdown,
-        GPUIndex: GPUSelect,
-    }
-
-    # host: TextWidget
-    # port: TextWidget
-
-    def typing_info(self, local_vars: Dict[str, Any]):
-        fun = self.__init__  # type: ignore
-        typing_dict = get_type_hints(fun)
-        for param in signature(fun).parameters.values():
-            if param.name != "sname":
-                yield (
-                    param.name,
-                    eval(param.name, local_vars),
-                    typing_dict[param.name],
-                )
+    def _ipython_display_(self):
+        self._main_elt._ipython_display_()
 
     @property
     def status(self):
@@ -131,15 +84,123 @@ class MLWidget:
         self.status_label.value = ", ".join(label)
 
     def widgets_refresh(self, *_):
-        with self.output:
-            from . import logfile_name
-            with open(logfile_name, "r") as fh:
-                l = fh.readlines()
-                self.debug.value = (
-                    "<code style='display: block; white-space: pre-wrap;'>"
-                    + "".join(l[-200:])
-                    + "</code>"
+        from . import logfile_name
+
+        with open(logfile_name, "r") as fh:
+            l = fh.readlines()
+            self.debug.value = (
+                "<code style='display: block; white-space: pre-wrap;'>"
+                + "".join(l[-200:])
+                + "</code>"
+            )
+
+
+class JSONBuilder:
+    def _create_model(self) -> JSONType:
+        return {
+            "templates": "../templates/caffe/",
+            "repository": self.model_repo.value,
+            "create_repository": True,
+        }
+
+    def _create_parameters_input(self) -> JSONType:
+        raise NotImplementedError
+
+    def _create_parameters_mllib(self) -> JSONType:
+        raise NotImplementedError
+
+    def _create_parameters_output(self) -> JSONType:
+        return {"store_config": True}
+
+    def _create_service_body(self) -> JSONType:
+        return OrderedDict(
+            [
+                ("mllib", self.mllib.value),
+                ("description", self.sname),
+                ("type", "supervised"),
+                (
+                    "parameters",
+                    dict(
+                        input=self._create_parameters_input(),
+                        mllib=self._create_parameters_mllib(),
+                        output=self._create_parameters_output(),
+                    ),
+                ),
+                ("model", self._create_model()),
+            ]
+        )
+
+    def _train_parameters_input(self) -> JSONType:
+        raise NotImplementedError
+
+    def _train_parameters_mllib(self) -> JSONType:
+        raise NotImplementedError
+
+    def _train_parameters_output(self) -> JSONType:
+        raise NotImplementedError
+
+    def _train_data(self) -> List[str]:
+        return [self.training_repo.value]
+
+    def _train_service_body(self) -> JSONType:
+        return OrderedDict(
+            [
+                ("service", self.sname),
+                ("async", True),
+                (
+                    "parameters",
+                    {
+                        "input": self._train_parameters_input(),
+                        "mllib": self._train_parameters_mllib(),
+                        "output": self._train_parameters_output(),
+                    },
+                ),
+                ("data", self._train_data()),
+            ]
+        )
+
+
+class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
+
+    _fields = {  # typing: Dict[str, str]
+        "sname": "Model name",
+        "training_repo": "Training directory",
+        "testing_repo": "Testing directory",
+    }
+
+    _widget_type = {
+        int: IntText,
+        float: FloatText,
+        bool: Checkbox,
+        Solver: SolverDropdown,
+        GPUIndex: GPUSelect,
+    }
+
+    def typing_info(self, local_vars: Dict[str, Any]):
+        fun = self.__init__  # type: ignore
+        typing_dict = get_type_hints(fun)
+        for param in signature(fun).parameters.values():
+            if param.name != "sname":
+                yield (
+                    param.name,
+                    eval(param.name, local_vars),
+                    typing_dict[param.name],
                 )
+
+    def on_start(self):
+        self.value = self.iterations.value
+        self.pbar.bar_style = "info"
+        self.pbar.max = self.iterations.value
+
+    def on_update(self, info):
+        self.pbar.value = info["body"]["measure"].get("iteration", 0)
+        self.pbar.bar_style = ""
+
+    def on_finished(self, info):
+        # a minima...
+        self.pbar.value = self.iterations.value
+        self.pbar.bar_style = "success"
+        self.last_info = info
 
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
@@ -147,6 +208,8 @@ class MLWidget:
 
         # logger.addHandler(log_viewer(self.output),)
         super().__init__(*args)
+
+        info_loghandler = OutputWidgetHandler()
 
         self.sname = sname
         self.output = Output(layout=Layout(max_width="650px"))
@@ -156,9 +219,7 @@ class MLWidget:
             description="Progression",
             layout=Layout(margin="18px"),
         )
-        self.status_label = Label(
-            value="Status: unknown", layout=Layout(margin="18px")
-        )
+
         self.run_button = Button(description="Run training")
         self.info_button = Button(description="Info")
         self.stop_button = Button(description="Delete service")
@@ -174,10 +235,14 @@ class MLWidget:
             HBox([self.info_button, self.hardclear_button]),
         ]
 
-        self.run_button.on_click(self.run)
-        self.info_button.on_click(self.info)
-        self.stop_button.on_click(self.stop)
-        self.hardclear_button.on_click(self.hardclear)
+        self.run_button.on_click(RedirectOutput(self.output)(self.run))
+        self.info_button.on_click(RedirectOutput(self.output)(self.info))
+        self.stop_button.on_click(
+            RedirectOutput(self.output, info_loghandler)(self.stop)
+        )
+        self.hardclear_button.on_click(
+            RedirectOutput(self.output, info_loghandler)(self.hardclear)
+        )
 
         for name, value, type_hint in self.typing_info(local_vars):
             self._add_widget(name, value, type_hint)
@@ -195,11 +260,10 @@ class MLWidget:
             [self.output], layout=Layout(min_height="800px", width="590px")
         )
 
-        self.debug = HTML(
-            layout={"width": "590px", "height": "800px", "border": "none"}
-        )
         self.refresh_button = Button(description="Refresh")
-        self.refresh_button.on_click(self.widgets_refresh)
+        self.refresh_button.on_click(
+            RedirectOutput(self.output)(self.widgets_refresh)
+        )
         self._tabs.children = [
             self._img_explorer,
             info_loghandler.out,
@@ -260,268 +324,8 @@ class MLWidget:
                 )
             )
 
-    def _ipython_display_(self):
-        self._main_elt._ipython_display_()
-
-    def stop(self, *_):
-        info_loghandler.out.clear_output()
-        self.output.clear_output()
-        with self.output:
-            request = sname_url.format(
-                host=self.host.value,
-                port=self.port.value,
-                path=self.path.value,
-                sname=self.sname,
-            )
-            c = requests.delete(request)
-            logging.info(
-                "Stop service {sname}: {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-            json_dict = c.json()
-            if "head" in json_dict:
-                self.status = json_dict["head"]
-            print(json.dumps(json_dict, indent=2))
-            return json_dict
-
-    def hardclear(self, *_):
-        # The basic version
-        info_loghandler.out.clear_output()
-        self.output.clear_output()
-        with self.output:
-            MLWidget.create_service(self)
-            request = (sname_url + "?clear=full").format(
-                host=self.host.value,
-                port=self.port.value,
-                path=self.path.value,
-                sname=self.sname,
-            )
-            c = requests.delete(request)
-            logging.info(
-                "Clearing (full) service {sname}: {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-
-            json_dict = c.json()
-            if "head" in json_dict:
-                self.status = json_dict["head"]
-            print(json.dumps(json_dict, indent=2))
-            # return json_dict
-
-    def create_service(self, *_):
-        info_loghandler.out.clear_output()
-        with self.output:
-            host = self.host.value
-            port = self.port.value
-
-            body = OrderedDict(
-                [
-                    ("mllib", "caffe"),
-                    ("description", self.sname),
-                    ("type", "supervised"),
-                    (
-                        "parameters",
-                        {
-                            "mllib": {"nclasses": 42},  # why not?
-                            "input": {"connector": "csv"},
-                        },
-                    ),
-                    (
-                        "model",
-                        {
-                            "repository": self.model_repo.value,
-                            "create_repository": True,
-                            # "templates": "../templates/caffe/"
-                        },
-                    ),
-                ]
-            )
-
-            logging.info(
-                "Creating service '{sname}':\n {body}".format(
-                    sname=self.sname, body=json.dumps(body, indent=2)
-                )
-            )
-            c = requests.put(
-                sname_url.format(
-                    host=host, port=port, path=self.path.value, sname=self.sname
-                ),
-                json.dumps(body),
-            )
-
-            if c.json()["status"]["code"] != 201:
-                logging.warning(
-                    "Reply from creating service '{sname}': {json}".format(
-                        sname=self.sname, json=json.dumps(c.json(), indent=2)
-                    )
-                )
-                raise RuntimeError(
-                    "Error code {code}: {msg}".format(
-                        code=c.json()["status"]["dd_code"],
-                        msg=c.json()["status"]["dd_msg"],
-                    )
-                )
-            else:
-                logging.info(
-                    "Reply from creating service '{sname}': {json}".format(
-                        sname=self.sname, json=json.dumps(c.json(), indent=2)
-                    )
-                )
-
-            json_dict = c.json()
-            if "head" in json_dict:
-                self.status = json_dict["head"]
-            print(json.dumps(json_dict, indent=2))
-            return json_dict
-
-    def run(self, *_):
-        logging.info("Entering run method")
-        self.output.clear_output()
-
-        with self.output:
-            host = self.host.value
-            port = self.port.value
-            body = self._create_service_body()
-
-            logging.info(
-                "Sending request "
-                + sname_url.format(
-                    host=host, port=port, path=self.path.value, sname=self.sname
-                )
-            )
-            c = requests.get(
-                sname_url.format(
-                    host=host, port=port, path=self.path.value, sname=self.sname
-                )
-            )
-            logging.info(
-                "Current state of service '{sname}': {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-            if c.json()["status"]["msg"] != "NotFound":
-                # self.clear()
-                logging.warning(
-                    (
-                        "Since service '{sname}' was still there, "
-                        "it has been fully cleared: {json}"
-                    ).format(
-                        sname=self.sname, json=json.dumps(c.json(), indent=2)
-                    )
-                )
-
-            logging.info(
-                "Creating service '{sname}':\n {body}".format(
-                    sname=self.sname, body=json.dumps(body, indent=2)
-                )
-            )
-            c = requests.put(
-                sname_url.format(
-                    host=host, port=port, path=self.path.value, sname=self.sname
-                ),
-                json.dumps(body),
-            )
-
-            if c.json()["status"]["code"] != 201:
-                logging.warning(
-                    "Reply from creating service '{sname}': {json}".format(
-                        sname=self.sname, json=json.dumps(c.json(), indent=2)
-                    )
-                )
-                raise RuntimeError(
-                    "Error code {code}: {msg}".format(
-                        code=c.json()["status"]["dd_code"],
-                        msg=c.json()["status"]["dd_msg"],
-                    )
-                )
-            else:
-                logging.info(
-                    "Reply from creating service '{sname}': {json}".format(
-                        sname=self.sname, json=json.dumps(c.json(), indent=2)
-                    )
-                )
-
-            body = self._train_body()
-
-            logging.info(
-                "Start training phase: {body}".format(
-                    body=json.dumps(body, indent=2)
-                )
-            )
-            c = requests.post(
-                "http://{host}:{port}/{path}/train".format(
-                    host=host, port=port, path=self.path.value
-                ),
-                json.dumps(body),
-            )
-            logging.info(
-                "Reply from training service '{sname}': {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-
-            json_dict = c.json()
-            if "head" in json_dict:
-                self.status = json_dict["head"]
-            print(json.dumps(json_dict, indent=2))
-
-            self.value = self.iterations.value
-            self.pbar.bar_style = "info"
-            self.pbar.max = self.iterations.value
-
-            thread = threading.Thread(target=self.update_loop)
-            thread.start()
-
-    def update_loop(self):
-
-        while True:
-            info = self.info(print_output=False)
-            self.pbar.bar_style = ""
-            status = info["head"]["status"]
-
-            if status == "finished":
-                self.pbar.value = self.iterations.value
-                self.pbar.bar_style = "success"
-                self.on_finished(info)
-                break
-
-            self.pbar.value = info["body"]["measure"].get("iteration", 0)
-
-            time.sleep(1)
-
-    def on_finished(self, info):
-        # a minima...
-        self.last_info = info
-
-    def info(self, print_output=True):
-        with self.output:
-            # TODO job number
-            request = (
-                "http://{host}:{port}/{path}/train?service={sname}&"
-                "job=1&timeout=10".format(
-                    host=self.host.value,
-                    port=self.port.value,
-                    path=self.path.value,
-                    sname=self.sname,
-                )
-            )
-            c = requests.get(request)
-            logging.debug(
-                "Getting info for service {sname}: {json}".format(
-                    sname=self.sname, json=json.dumps(c.json(), indent=2)
-                )
-            )
-
-            json_dict = c.json()
-            if "head" in json_dict:
-                self.status = json_dict["head"]
-            if print_output:
-                print(json.dumps(json_dict, indent=2))
-            return json_dict
-
     def update_label_list(self, _):
+        # should this be here?
         with self.output:
             if self.training_repo.value != "":
                 self.train_labels.options = tuple(
