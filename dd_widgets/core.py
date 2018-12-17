@@ -162,8 +162,6 @@ class TalkWithDD:
         thread = threading.Thread(target=self.update_loop)
         thread.start()
 
-        return json_dict
-
     def stop(self, *_) -> JSONType:
 
         request = self.sname_url.format(
@@ -215,10 +213,14 @@ class TalkWithDD:
                 self.on_finished(info)
                 break
 
+            if status == "error":
+                self.on_error(info)
+                break
+
             self.on_update(info)
             time.sleep(1)
 
-    def info(self) -> JSONType:
+    def info(self, *_) -> JSONType:
         # TODO job number
         request = (
             "http://{host}:{port}/{path}/train?service={sname}&"

@@ -32,6 +32,7 @@ class Detection(ImageTrainerMixin):
         self,
         sname: str,
         *,  # unnamed parameters are forbidden
+        mllib: str = "caffe",
         training_repo: Path = None,
         testing_repo: Path = None,
         host: str = "localhost",

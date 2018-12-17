@@ -257,11 +257,6 @@ class ImageTrainerMixin(MLWidget):
         if self.ctc.value:
             parameters_input["ctc"] = True
 
-        logging.info(
-            "Parameters input: {}".format(
-                json.dumps(parameters_input, indent=2)
-            )
-        )
         return parameters_input
 
     def _create_parameters_mllib(self) -> JSONType:
@@ -392,11 +387,6 @@ class ImageTrainerMixin(MLWidget):
         if self.regression.value:
             dic["regression"] = True
 
-        logging.info(
-            "Parameters mllib: {}".format(
-                json.dumps(dic, indent=2)
-            )
-        )
         return dic
 
     def _train_data(self) -> List[str]:

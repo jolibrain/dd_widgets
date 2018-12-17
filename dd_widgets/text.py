@@ -51,6 +51,11 @@ class Text(TextTrainerMixin):
         template: Optional[str] = None,
         activation: str = "relu",
         embedding: bool = False,
+        autoencoder: bool = False,
+        lregression: bool = False,
+        dropout: float = .2,
+        finetune: bool = False,
+        test_batch_size: int = 16,
         target_repository: str = ""
     ) -> None:
 

@@ -29,6 +29,7 @@ class OCR(ImageTrainerMixin):
         self,
         sname: str,
         *,  # unnamed parameters are forbidden
+        mllib: str = "caffe",
         ctc: bool = True,
         training_repo: Path = None,
         testing_repo: Path = None,

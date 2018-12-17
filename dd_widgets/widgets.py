@@ -1,4 +1,5 @@
 # fmt: off
+import logging
 
 import json
 from collections import OrderedDict
@@ -203,6 +204,16 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
         self.pbar.value = self.iterations.value
         self.pbar.bar_style = "success"
         self.last_info = info
+
+    def on_error(self, info):
+        with self.output:
+            logging.error(json.dumps(info, indent=2))
+            raise RuntimeError(
+                "Error code {code}: {msg}".format(
+                    code=info['body']['Error']["dd_code"],
+                    msg=info['body']['Error']["dd_msg"],
+                )
+            )
 
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
