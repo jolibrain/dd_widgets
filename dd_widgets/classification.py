@@ -1,11 +1,13 @@
 from pathlib import Path
 from typing import List, Optional
 
-import cv2
 from IPython.display import display
 
+import cv2
+
 from .core import JSONType
-from .mixins import ImageTrainerMixin, img_handle
+from .mixins import ImageTrainerMixin
+from .utils import img_handle
 from .widgets import GPUIndex, Solver
 
 

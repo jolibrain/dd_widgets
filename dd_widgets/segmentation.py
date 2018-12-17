@@ -3,9 +3,10 @@ from typing import List, Optional
 
 from IPython.display import display
 
-from .mixins import ImageTrainerMixin, img_handle
-from .widgets import GPUIndex, Solver
 from .core import JSONType
+from .mixins import ImageTrainerMixin
+from .utils import img_handle
+from .widgets import GPUIndex, Solver
 
 
 class Segmentation(ImageTrainerMixin):

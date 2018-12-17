@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from ipywidgets import HBox, SelectMultiple
 
+from .core import JSONType
 from .mixins import TextTrainerMixin, sample_from_iterable
 from .widgets import Solver, GPUIndex
 
@@ -119,7 +120,7 @@ class Text(TextTrainerMixin):
             ]
             self.train_labels.value = []
 
-    def _create_parameters_input(self):
+    def _create_parameters_input(self) -> JSONType:
         return {
             "connector": "txt",
             "characters": self.characters.value,
@@ -130,7 +131,7 @@ class Text(TextTrainerMixin):
             "embedding": self.embedding.value,
         }
 
-    def _train_parameters_input(self):
+    def _train_parameters_input(self) -> JSONType:
         return {
             "alphabet": self.alphabet.value,
             "characters": self.characters.value,

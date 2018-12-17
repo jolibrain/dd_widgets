@@ -59,7 +59,7 @@ class TSNE_Text(MLWidget):
 
         return body
 
-    def _train_body(self):
+    def _train_service_body(self):
 
         body = OrderedDict(
             [

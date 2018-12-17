@@ -64,7 +64,7 @@ class TSNE_CSV(MLWidget):
 
         return body
 
-    def _train_body(self):
+    def _train_service_body(self):
 
         body = OrderedDict(
             [

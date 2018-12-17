@@ -4,7 +4,8 @@ from typing import List, Optional
 from IPython.display import display
 
 from .core import JSONType
-from .mixins import ImageTrainerMixin, img_handle, sample_from_iterable
+from .mixins import ImageTrainerMixin
+from .utils import img_handle, sample_from_iterable
 from .widgets import GPUIndex, Solver
 
 

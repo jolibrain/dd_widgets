@@ -4,8 +4,9 @@ from typing import List, Optional
 import pandas as pd
 from ipywidgets import HTML
 
+from .core import JSONType
 from .mixins import TextTrainerMixin
-from .widgets import Solver, GPUIndex
+from .widgets import GPUIndex, Solver
 
 
 class CSV(TextTrainerMixin):
@@ -64,14 +65,14 @@ class CSV(TextTrainerMixin):
         )
         self._img_explorer.children = [self._displays, self.output]
 
-    def _create_parameters_input(self):
+    def _create_parameters_input(self) -> JSONType:
         return {
             "connector": "csv",
             "labels": self.csv_label.value,
             "db": self.db.value,
         }
 
-    def _train_parameters_input(self):
+    def _train_parameters_input(self) -> JSONType:
         return {
             "autoencoder": self.autoencoder.value,
             "categoricals": eval(self.csv_categoricals.value),
