@@ -1,4 +1,4 @@
-from typing import Enum
+from enum import Enum
 
 import requests
 from ipywidgets import Dropdown, SelectMultiple

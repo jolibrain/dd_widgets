@@ -18,6 +18,8 @@ from .types import GPUIndex, GPUSelect, Solver, SolverDropdown
 
 # fmt: on
 
+info_loghandler = OutputWidgetHandler()
+
 
 class RedirectOutput:
     """
@@ -208,8 +210,6 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
 
         # logger.addHandler(log_viewer(self.output),)
         super().__init__(*args)
-
-        info_loghandler = OutputWidgetHandler()
 
         self.sname = sname
         self.output = Output(layout=Layout(max_width="650px"))
