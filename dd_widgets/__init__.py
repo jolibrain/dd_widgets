@@ -24,7 +24,11 @@ def notebook_path() -> Path:
     available. The method only works when the security is token-based or if
     there is no password
     """
-    connection_file = Path(ipykernel.get_connection_file()).stem
+    try:
+        connection_file = Path(ipykernel.get_connection_file()).stem
+    except RuntimeError:
+        return Path("./tests.log")
+
     kernel_id = connection_file.split("-", 1)[1].split(".")[0]
 
     for srv in notebookapp.list_running_servers():
