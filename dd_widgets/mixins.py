@@ -329,45 +329,45 @@ class ImageTrainerMixin(MLWidget):
                 "all_effects": True,
                 "prob": self.distort_prob.value,
             }
-        if any(
-            [
-                self.all_effects.value,
-                self.persp_horizontal.value,
-                self.persp_vertical.value,
-                self.zoom_out.value,
-                self.zoom_in.value,
-            ]
-        ) or any(
-            p != ""
-            for p in [
-                self.persp_factor.value,
-                self.zoom_factor.value,
-                self.pad_mode.value,
-                self.prob.value,
-            ]
-        ):
-            dic["geometry"] = {}
-            # -- booleans --
-            if self.all_effects.value:
-                dic["geometry"]["all_effects"] = True
-            if self.persp_horizontal.value:
-                dic["geometry"]["persp_horizontal"] = True
-            if self.persp_vertical.value:
-                dic["geometry"]["persp_vertical"] = True
-            if self.zoom_out.value:
-                dic["geometry"]["zoom_out"] = True
-            if self.zoom_in.value:
-                dic["geometry"]["zoom_in"] = True
-            # -- strings --
-            if self.pad_mode.value != "":
-                dic["geometry"]["pad_mode"] = float(self.pad_mode.value)
-            # -- float --
-            if self.persp_factor.value != "":
-                dic["geometry"]["persp_factor"] = float(self.persp_factor.value)
-            if self.zoom_factor.value != "":
-                dic["geometry"]["zoom_factor"] = float(self.zoom_factor.value)
-            if self.prob.value != "":
-                dic["geometry"]["prob"] = float(self.prob.value)
+        # if any(
+        #     [
+        #         self.all_effects.value,
+        #         self.persp_horizontal.value,
+        #         self.persp_vertical.value,
+        #         self.zoom_out.value,
+        #         self.zoom_in.value,
+        #     ]
+        # ) or any(
+        #     p != ""
+        #     for p in [
+        #         self.persp_factor.value,
+        #         self.zoom_factor.value,
+        #         self.pad_mode.value,
+        #         self.prob.value,
+        #     ]
+        # ):
+        #     dic["geometry"] = {}
+        #     # -- booleans --
+        #     if self.all_effects.value:
+        #         dic["geometry"]["all_effects"] = True
+        #     if self.persp_horizontal.value:
+        #         dic["geometry"]["persp_horizontal"] = True
+        #     if self.persp_vertical.value:
+        #         dic["geometry"]["persp_vertical"] = True
+        #     if self.zoom_out.value:
+        #         dic["geometry"]["zoom_out"] = True
+        #     if self.zoom_in.value:
+        #         dic["geometry"]["zoom_in"] = True
+        #     # -- strings --
+        #     if self.pad_mode.value != "":
+        #         dic["geometry"]["pad_mode"] = float(self.pad_mode.value)
+        #     # -- float --
+        #     if self.persp_factor.value != "":
+        #         dic["geometry"]["persp_factor"] = float(self.persp_factor.value)
+        #     if self.zoom_factor.value != "":
+        #         dic["geometry"]["zoom_factor"] = float(self.zoom_factor.value)
+        #     if self.prob.value != "":
+        #         dic["geometry"]["prob"] = float(self.prob.value)
 
         dic["gpu"] = True
         assert len(self.gpuid.index) > 0, "Set a GPU index"

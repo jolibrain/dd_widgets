@@ -70,15 +70,15 @@ class Classification(ImageTrainerMixin):
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         # -- geometry --
-        all_effects: bool = False,
-        persp_horizontal: bool = False,
-        persp_vertical: bool = False,
-        zoom_out: bool = False,
-        zoom_in: bool = False,
-        pad_mode: str = "",
-        persp_factor: str = "",
-        zoom_factor: str = "",
-        prob: str = "",
+#        all_effects: bool = False,
+#        persp_horizontal: bool = False,
+#        persp_vertical: bool = False,
+#        zoom_out: bool = False,
+#        zoom_in: bool = False,
+#        pad_mode: str = "",
+#        persp_factor: str = "",
+#        zoom_factor: str = "",
+#        prob: str = "",
         # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
@@ -91,7 +91,8 @@ class Classification(ImageTrainerMixin):
         timesteps: int = 32,
         unchanged_data: bool = False,
         ctc: bool = False,
-        target_repository: str = ""
+        target_repository: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())

@@ -123,11 +123,14 @@ class JSONBuilder:
                 ("type", "supervised"),
                 (
                     "parameters",
-                    dict(
-                        input=self._create_parameters_input(),
-                        mllib=self._create_parameters_mllib(),
-                        output=self._create_parameters_output(),
-                    ),
+                    {
+                        'input':{**self._create_parameters_input(),
+                               **self._append_create_parameters_input},
+                        'mllib':{**self._create_parameters_mllib(),
+                               **self._append_create_parameters_mllib},
+                        'output':{**self._create_parameters_output(),
+                                **self._append_create_parameters_output}
+                    }
                 ),
                 ("model", self._create_model()),
             ]
@@ -153,9 +156,13 @@ class JSONBuilder:
                 (
                     "parameters",
                     {
-                        "input": self._train_parameters_input(),
-                        "mllib": self._train_parameters_mllib(),
-                        "output": self._train_parameters_output(),
+                        'input':{**self._train_parameters_input(),
+                               **self._append_train_parameters_input},
+                        'mllib':{**self._train_parameters_mllib(),
+                               **self._append_train_parameters_mllib},
+                        'output':{**self._train_parameters_output(),
+                                **self._append_train_parameters_output}
+
                     },
                 ),
                 ("data", self._train_data()),
@@ -183,7 +190,7 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
         fun = self.__init__  # type: ignore
         typing_dict = get_type_hints(fun)
         for param in signature(fun).parameters.values():
-            if param.name != "sname":
+            if param.name not in ["sname", "kwargs"]:
                 yield (
                     param.name,
                     eval(param.name, local_vars),
@@ -227,6 +234,15 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
 
         # logger.addHandler(log_viewer(self.output),)
         super().__init__(*args)
+        kwargs = local_vars['kwargs']
+
+        self._append_create_parameters_input = kwargs.get('create_parameters_input', {})
+        self._append_create_parameters_mllib = kwargs.get('create_parameters_mllib', {})
+        self._append_create_parameters_output = kwargs.get('create_parameters_output', {})
+
+        self._append_train_parameters_input = kwargs.get('train_parameters_input', {})
+        self._append_train_parameters_mllib = kwargs.get('train_parameters_mllib', {})
+        self._append_train_parameters_output = kwargs.get('train_parameters_output', {})
 
         self.sname = sname
         self.output = Output(layout=Layout(max_width="650px"))
