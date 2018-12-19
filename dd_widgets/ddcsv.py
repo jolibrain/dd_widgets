@@ -56,7 +56,8 @@ class CSV(TextTrainerMixin):
         solver_type: Solver = "AMSGRAD",
         autoencoder: bool = False,
         class_weights: List[float] = [],
-        target_repository: str = ""
+        target_repository: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())

@@ -22,8 +22,9 @@ class Text(TextTrainerMixin):
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
-        gpuid: GPUIndex = 0,
         path: str = "",
+        gpuid: GPUIndex = 0,
+        # -- specific
         regression: bool = False,
         db: bool = True,
         nclasses: int = -1,

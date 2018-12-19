@@ -34,16 +34,16 @@ class OCR(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
-        ctc: bool = True,
         training_repo: Path = None,
         testing_repo: Path = None,
+        description: str = "OCR service",
+        model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
         path: str = "",
         gpuid: GPUIndex = 0,
+        # -- specific
         nclasses: int = -1,
-        description: str = "OCR service",
-        model_repo: Optional[str] = None,
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-4,
@@ -70,15 +70,15 @@ class OCR(ImageTrainerMixin):
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         # -- geometry --
-        all_effects: bool = False,
-        persp_horizontal: bool = False,
-        persp_vertical: bool = False,
-        zoom_out: bool = False,
-        zoom_in: bool = False,
-        pad_mode: str = "",
-        persp_factor: str = "",
-        zoom_factor: str = "",
-        prob: str = "",
+        # all_effects: bool = False,
+        # persp_horizontal: bool = False,
+        # persp_vertical: bool = False,
+        # zoom_out: bool = False,
+        # zoom_in: bool = False,
+        # pad_mode: str = "",
+        # persp_factor: str = "",
+        # zoom_factor: str = "",
+        # prob: str = "",
         # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
@@ -91,7 +91,9 @@ class OCR(ImageTrainerMixin):
         timesteps: int = 32,
         unchanged_data: bool = False,
         target_repository: str = "",
-        align: bool = False
+        align: bool = False,
+        ctc: bool = True,
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())
