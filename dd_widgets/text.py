@@ -29,6 +29,7 @@ class Text(MLWidget):
         nclasses: int = -1,
         ignore_label: Optional[int] = -1,
         layers: List[str] = [],
+        dropout: float = .2,
         iterations: int = 25000,
         test_interval: int = 1000,
         snapshot_interval: int = 1000,
@@ -51,6 +52,9 @@ class Text(MLWidget):
         template: Optional[str] = None,
         activation: str = "relu",
         embedding: bool = False,
+        objective: str = '',
+        class_weights: List[float] = [],
+        scale_pos_weight: float = 1.0,
         target_repository: str = ""
     ) -> None:
 
@@ -144,6 +148,7 @@ class Text(MLWidget):
                             "nclasses": self.nclasses.value,
                             "layers": eval(self.layers.value),
                             "activation": self.activation.value,
+                            "dropout": self.dropout.value,
                             "db": self.db.value,
                             "regression": self.regression.value,
                         },
@@ -161,7 +166,7 @@ class Text(MLWidget):
             ]
         )
 
-        if self.template.value is not None:
+        if self.template.value is None:
             del body["parameters"]["mllib"]["template"]
 
         if self.regression.value:
@@ -222,10 +227,19 @@ class Text(MLWidget):
         if self.mllib.value == "xgboost":
             del body["parameters"]["mllib"]["solver"]
             body["parameters"]["mllib"]["iterations"] = self.iterations.value
-
+            body["parameters"]["mllib"]["objective"] = self.objective.value
+            body["parameters"]["mllib"]["booster_params"] = {}
+            body["parameters"]["mllib"]["booster_params"]["scale_pos_weight"] = self.scale_pos_weight.value
+            
         if self.ignore_label.value != -1:
             body["parameters"]["mllib"]["ignore_label"] = int(
                 self.ignore_label.value
             )
+
+        if self.testing_repo.value:
+            body["data"].append(self.testing_repo.value)
+            
+        if self.class_weights.value:
+            body["parameters"]["mllib"]["class_weights"] = eval(self.class_weights.value)
 
         return body
