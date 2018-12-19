@@ -55,6 +55,7 @@ class Text(TextTrainerMixin):
         lregression: bool = False,
         dropout: float = .2,
         finetune: bool = False,
+        class_weights: List[float] = [],
         test_batch_size: int = 16,
         target_repository: str = ""
     ) -> None:

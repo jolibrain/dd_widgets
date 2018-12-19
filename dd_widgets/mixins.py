@@ -1,9 +1,7 @@
-import json
 import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List
 
 from ipywidgets import Button, HBox, SelectMultiple
 
@@ -22,6 +20,7 @@ class TextTrainerMixin(MLWidget):
             "nclasses": self.nclasses.value,
             "activation": self.activation.value,
             "db": self.db.value,
+            "dropout": self.dropout.value,
             "template": self.template.value,
             "layers": eval(self.layers.value),
             "autoencoder": self.autoencoder.value,
@@ -43,8 +42,6 @@ class TextTrainerMixin(MLWidget):
         if self.lregression.value:
             dic["template"] = "lregression"
             del dic["layers"]
-        else:
-            dic["dropout"] = self.dropout.value
 
         if self.finetune.value:
             dic["finetuning"] = True
@@ -83,6 +80,13 @@ class TextTrainerMixin(MLWidget):
         if self.mllib.value == "xgboost":
             del dic["solver"]
             dic["iterations"] = self.iterations.value
+            dic["objective"] = self.objective.value
+            dic["booster_params"] = {
+                "scale_pos_weight": self.scale_pos_weight.value
+            }
+
+        if self.class_weights.value:
+            dic['class_weights'] = eval(self.class_weights.value)
 
         return dic
 
@@ -100,9 +104,6 @@ class TextTrainerMixin(MLWidget):
             dic["measure"] = ["eucll"]
 
         return dic
-
-    def _train_data(self) -> List[str]:
-        return [self.training_repo.value, self.testing_repo.value]
 
 
 class ImageTrainerMixin(MLWidget):
@@ -322,10 +323,7 @@ class ImageTrainerMixin(MLWidget):
         if crop_size > 0:
             dic["crop_size"] = crop_size
         if self.noise_prob.value > 0.0:
-            dic["noise"] = {
-                "all_effects": True,
-                "prob": self.noise_prob.value,
-            }
+            dic["noise"] = {"all_effects": True, "prob": self.noise_prob.value}
         if self.distort_prob.value > 0.0:
             dic["distort"] = {
                 "all_effects": True,
@@ -362,18 +360,12 @@ class ImageTrainerMixin(MLWidget):
                 dic["geometry"]["zoom_in"] = True
             # -- strings --
             if self.pad_mode.value != "":
-                dic["geometry"]["pad_mode"] = float(
-                    self.pad_mode.value
-                )
+                dic["geometry"]["pad_mode"] = float(self.pad_mode.value)
             # -- float --
             if self.persp_factor.value != "":
-                dic["geometry"]["persp_factor"] = float(
-                    self.persp_factor.value
-                )
+                dic["geometry"]["persp_factor"] = float(self.persp_factor.value)
             if self.zoom_factor.value != "":
-                dic["geometry"]["zoom_factor"] = float(
-                    self.zoom_factor.value
-                )
+                dic["geometry"]["zoom_factor"] = float(self.zoom_factor.value)
             if self.prob.value != "":
                 dic["geometry"]["prob"] = float(self.prob.value)
 
@@ -388,12 +380,6 @@ class ImageTrainerMixin(MLWidget):
             dic["regression"] = True
 
         return dic
-
-    def _train_data(self) -> List[str]:
-        train_data = [self.training_repo.value]
-        if self.testing_repo.value != "":
-            train_data.append(self.testing_repo.value)
-        return train_data
 
     def _train_parameters_input(self) -> JSONType:
 

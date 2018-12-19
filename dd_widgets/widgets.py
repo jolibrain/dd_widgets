@@ -215,6 +215,12 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
                 )
             )
 
+    def _train_data(self) -> List[str]:
+        train_data = [self.training_repo.value]
+        if self.testing_repo.value != "":
+            train_data.append(self.testing_repo.value)
+        return train_data
+
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:
 
         from . import logfile_name

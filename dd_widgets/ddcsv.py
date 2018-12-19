@@ -55,6 +55,7 @@ class CSV(TextTrainerMixin):
         shuffle: bool = True,
         solver_type: Solver = "AMSGRAD",
         autoencoder: bool = False,
+        class_weights: List[float] = [],
         target_repository: str = ""
     ) -> None:
 
