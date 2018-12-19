@@ -33,7 +33,7 @@ def img_handle(
     fig, ax = plt.subplots()
     ax.imshow(data)
     if segmentation is not None:
-        data = cv2.imread(segmentation.as_posix(), *imread_args)
+        data = cv2.imread(segmentation.as_posix(), cv2.IMREAD_UNCHANGED)
         ax.imshow(data, alpha=.8)
         if data.max() >= nclasses > -1:
             raise RuntimeError(
