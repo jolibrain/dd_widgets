@@ -12,12 +12,11 @@ from .widgets import GPUIndex, Solver
 
 
 class Classification(ImageTrainerMixin):
-    ctc = False
 
     def display_img(self, args):
         imread_args = tuple()
-        if self.unchanged_data:
-            imread_args = cv2.IMREAD_UNCHANGED,
+        if self.unchanged_data.value:
+            imread_args = (cv2.IMREAD_UNCHANGED,)
         self.output.clear_output()
         with self.output:
             for path in args["new"]:
@@ -70,15 +69,15 @@ class Classification(ImageTrainerMixin):
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         # -- geometry --
-#        all_effects: bool = False,
-#        persp_horizontal: bool = False,
-#        persp_vertical: bool = False,
-#        zoom_out: bool = False,
-#        zoom_in: bool = False,
-#        pad_mode: str = "",
-#        persp_factor: str = "",
-#        zoom_factor: str = "",
-#        prob: str = "",
+        # all_effects: bool = False,
+        # persp_horizontal: bool = False,
+        # persp_vertical: bool = False,
+        # zoom_out: bool = False,
+        # zoom_in: bool = False,
+        # pad_mode: str = "",
+        # persp_factor: str = "",
+        # zoom_factor: str = "",
+        # prob: str = "",
         # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
@@ -99,5 +98,5 @@ class Classification(ImageTrainerMixin):
 
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
-        dic['measure'] = ["mcll", "f1", "acc-5"]
+        dic["measure"] = ["mcll", "f1", "acc-5"]
         return dic

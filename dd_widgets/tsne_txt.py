@@ -1,5 +1,3 @@
-
-from collections import OrderedDict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,10 +6,13 @@ from IPython.display import display
 
 from ipywidgets import HTML
 
-from .widgets import MLWidget
+from .core import JSONType
+from .widgets import GPUIndex, MLWidget
 
 
 class TSNE_Text(MLWidget):
+    _type = "unsupervised"
+
     def __init__(
         self,
         sname: str,
@@ -23,9 +24,11 @@ class TSNE_Text(MLWidget):
         host: str = "localhost",
         port: int = 1234,
         path: str = "",
-        # gpuid: GPUIndex = 0,
+        gpuid: GPUIndex = 0,
+        # -- tsne specific
         iterations: int = 5000,
         perplexity: int = 30,
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())
@@ -33,57 +36,17 @@ class TSNE_Text(MLWidget):
         self._displays = HTML()
         self._img_explorer.children = [self._displays, self.output]
 
-    def _create_service_body(self):
-        body = OrderedDict(
-            [
-                ("mllib", self.mllib.value),
-                ("description", self.sname),
-                ("type", "unsupervised"),
-                (
-                    "parameters",
-                    {
-                        "input": {"connector": "txt"},
-                        "mllib": {},
-                        "output": {},
-                    },
-                ),
-                (
-                    "model",
-                    {
-                        "repository": self.model_repo.value,
-                        "create_repository": True,
-                    },
-                ),
-            ]
-        )
+    def _create_parameters_input(self) -> JSONType:
+        return {"connector": "txt"}
 
-        return body
+    def _train_parameters_input(self) -> JSONType:
+        return {"min_count": 10, "min_word_length": 5}
 
-    def _train_service_body(self):
-
-        body = OrderedDict(
-            [
-                ("service", self.sname),
-                ("async", True),
-                (
-                    "parameters",
-                    {
-                        "mllib": {
-                            "iterations": self.iterations.value,
-                            "perplexity": self.perplexity.value,
-                        },
-                        "input": {
-                            "min_count": 10,
-                            "min_word_length": 5,
-                        },
-                        "output": {},
-                    },
-                ),
-                ("data", [self.training_repo.value]),
-            ]
-        )
-
-        return body
+    def _train_parameters_mllib(self) -> JSONType:
+        return {
+            "iterations": self.iterations.value,
+            "perplexity": self.perplexity.value,
+        }
 
     def plot(self, **kwargs):
         self.output.clear_output()

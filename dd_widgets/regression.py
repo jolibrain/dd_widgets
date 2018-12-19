@@ -3,6 +3,8 @@ from typing import List, Optional
 
 from IPython.display import display
 
+import cv2
+
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
@@ -12,9 +14,12 @@ from .widgets import GPUIndex, Solver
 class Regression(ImageTrainerMixin):
     def display_img(self, args):
         self.output.clear_output()
+        imread_args = tuple()
+        if self.unchanged_data.value:
+            imread_args = (cv2.IMREAD_UNCHANGED,)
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path))
+                shape, img = img_handle(Path(path), imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
@@ -74,7 +79,8 @@ class Regression(ImageTrainerMixin):
         timesteps: int = 32,
         unchanged_data: bool = False,
         ctc: bool = False,
-        target_repository: str = ""
+        target_repository: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())

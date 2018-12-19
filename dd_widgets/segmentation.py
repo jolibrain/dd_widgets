@@ -3,6 +3,8 @@ from typing import List, Optional
 
 from IPython.display import display
 
+import cv2
+
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
@@ -51,15 +53,15 @@ class Segmentation(ImageTrainerMixin):
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         # -- geometry --
-        all_effects: bool = False,
-        persp_horizontal: bool = False,
-        persp_vertical: bool = False,
-        zoom_out: bool = False,
-        zoom_in: bool = False,
-        pad_mode: str = "",
-        persp_factor: str = "",
-        zoom_factor: str = "",
-        prob: str = "",
+        # all_effects: bool = False,
+        # persp_horizontal: bool = False,
+        # persp_vertical: bool = False,
+        # zoom_out: bool = False,
+        # zoom_in: bool = False,
+        # pad_mode: str = "",
+        # persp_factor: str = "",
+        # zoom_factor: str = "",
+        # prob: str = "",
         # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
@@ -74,16 +76,20 @@ class Segmentation(ImageTrainerMixin):
         unchanged_data: bool = False,
         ctc: bool = False,
         target_repository: str = "",
-        loss: str = ""
+        loss: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())
 
     def display_img(self, args):
         self.output.clear_output()
+        imread_args = tuple()
+        if self.unchanged_data.value:
+            imread_args = (cv2.IMREAD_UNCHANGED,)
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path))
+                shape, img = img_handle(Path(path), imread_args=imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
@@ -101,6 +107,11 @@ class Segmentation(ImageTrainerMixin):
                 # display(Image(path))
                 # integrate THIS : https://github.com/alx/react-bounding-box
                 # (cv2.imread(self.file_dict[Path(path)].as_posix()))
+
+    def _create_parameters_input(self) -> JSONType:
+        dic = super()._create_parameters_input()
+        dic["segmentation"] = True
+        return dic
 
     def _create_parameters_mllib(self) -> JSONType:
         dic = super()._create_parameters_mllib()

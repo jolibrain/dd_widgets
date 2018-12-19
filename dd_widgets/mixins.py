@@ -245,12 +245,6 @@ class ImageTrainerMixin(MLWidget):
         if self.unchanged_data:
             parameters_input["unchanged_data"] = True
 
-        if self.__class__.__name__ == "Detection":
-            parameters_input["bbox"] = True
-
-        if self.__class__.__name__ == "Segmentation":
-            parameters_input["segmentation"] = True
-
         if self.multi_label.value:
             parameters_input["multi_label"] = True
             parameters_input["db"] = False
@@ -363,7 +357,8 @@ class ImageTrainerMixin(MLWidget):
         #         dic["geometry"]["pad_mode"] = float(self.pad_mode.value)
         #     # -- float --
         #     if self.persp_factor.value != "":
-        #         dic["geometry"]["persp_factor"] = float(self.persp_factor.value)
+        #         dic["geometry"]["persp_factor"] = float(
+        #             self.persp_factor.value)
         #     if self.zoom_factor.value != "":
         #         dic["geometry"]["zoom_factor"] = float(self.zoom_factor.value)
         #     if self.prob.value != "":
@@ -418,8 +413,6 @@ class ImageTrainerMixin(MLWidget):
                 "iter_size": self.iter_size.value,
             },
         }
-        if self.__class__.__name__ == "Detection":
-            dic["bbox"] = True
 
         if self.rand_skip.value > 0 and self.resume.value:
             dic["solver"]["rand_skip"] = self.rand_skip.value

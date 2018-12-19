@@ -57,7 +57,8 @@ class Text(TextTrainerMixin):
         finetune: bool = False,
         class_weights: List[float] = [],
         test_batch_size: int = 16,
-        target_repository: str = ""
+        target_repository: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())

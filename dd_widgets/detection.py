@@ -3,6 +3,8 @@ from typing import List, Optional
 
 from IPython.display import display
 
+import cv2
+
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
@@ -10,13 +12,15 @@ from .widgets import GPUIndex, Solver
 
 
 class Detection(ImageTrainerMixin):
-    ctc = False
 
     def display_img(self, args):
         self.output.clear_output()
+        imread_args = tuple()
+        if self.unchanged_data.value:
+            imread_args = (cv2.IMREAD_UNCHANGED,)
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path))
+                shape, img = img_handle(Path(path), imread_args=imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
@@ -97,10 +101,20 @@ class Detection(ImageTrainerMixin):
 
         super().__init__(sname, locals())
 
+    def _create_parameters_input(self) -> JSONType:
+        dic = super()._create_parameters_input()
+        dic['bbox'] = True
+        return dic
+
     def _train_parameters_input(self) -> JSONType:
         dic = super()._train_parameters_input()
         dic["db_width"] = self.db_width.value
         dic["db_height"] = self.db_height.value
+        return dic
+
+    def _train_parameters_mllib(self) -> JSONType:
+        dic = super()._create_parameters_input()
+        dic['bbox'] = True
         return dic
 
     def _train_parameters_output(self) -> JSONType:
