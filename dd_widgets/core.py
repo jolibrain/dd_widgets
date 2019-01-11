@@ -266,26 +266,24 @@ class ImageTrainerMixin(MLWidget):
                 self.persp_factor.value,
                 self.zoom_factor.value,
                 self.pad_mode.value,
-                self.prob.value,
+                self.geometry_prob.value,
             ]
         ):
             geometry_dict = dict(geometry={})
             # -- booleans --
             if self.all_effects.value:
-                geometry_dict["geometry"]["all_effects"] = True
+                geometry_dict["geometry"]["all_effects"] = False
             if self.persp_horizontal.value:
-                geometry_dict["geometry"]["persp_horizontal"] = True
+                geometry_dict["geometry"]["persp_horizontal"] = self.persp_horizontal
             if self.persp_vertical.value:
-                geometry_dict["geometry"]["persp_vertical"] = True
+                geometry_dict["geometry"]["persp_vertical"] = self.persp_vertical
             if self.zoom_out.value:
-                geometry_dict["geometry"]["zoom_out"] = True
+                geometry_dict["geometry"]["zoom_out"] = self.zoom_out
             if self.zoom_in.value:
-                geometry_dict["geometry"]["zoom_in"] = True
+                geometry_dict["geometry"]["zoom_in"] = self.zoom_in
             # -- strings --
             if self.pad_mode.value != "":
-                geometry_dict["geometry"]["pad_mode"] = float(
-                    self.pad_mode.value
-                )
+                geometry_dict["geometry"]["pad_mode"] = self.pad_mode.value
             # -- float --
             if self.persp_factor.value != "":
                 geometry_dict["geometry"]["persp_factor"] = float(
@@ -295,8 +293,8 @@ class ImageTrainerMixin(MLWidget):
                 geometry_dict["geometry"]["zoom_factor"] = float(
                     self.zoom_factor.value
                 )
-            if self.prob.value != "":
-                geometry_dict["geometry"]["prob"] = float(self.prob.value)
+            if self.geometry_prob.value != "":
+                geometry_dict["geometry"]["prob"] = float(self.geometry_prob.value)
 
         parameters_mllib["gpu"] = True
         assert len(self.gpuid.index) > 0, "Set a GPU index"

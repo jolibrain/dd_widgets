@@ -73,9 +73,9 @@ class Detection(ImageTrainerMixin):
         zoom_out: bool = False,
         zoom_in: bool = False,
         pad_mode: str = "",
-        persp_factor: str = "",
-        zoom_factor: str = "",
-        prob: str = "",
+        persp_factor: float = 0.25,
+        zoom_factor: float = 0.25,
+        geometry_prob: float = 0.0,
         # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
