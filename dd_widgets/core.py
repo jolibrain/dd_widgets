@@ -279,7 +279,6 @@ class ImageTrainerMixin(MLWidget):
             if self.persp_vertical.value:
                 parameters_mllib["geometry"]["persp_vertical"] = self.persp_vertical.value
             if self.zoom_out.value:
-                print("zoom_out=",self.zoom_out)
                 parameters_mllib["geometry"]["zoom_out"] = self.zoom_out.value
             if self.zoom_in.value:
                 parameters_mllib["geometry"]["zoom_in"] = self.zoom_in.value
@@ -297,7 +296,6 @@ class ImageTrainerMixin(MLWidget):
                 )
             if self.geometry_prob.value != "":
                 parameters_mllib["geometry"]["prob"] = float(self.geometry_prob.value)
-            print(parameters_mllib)
                 
         parameters_mllib["gpu"] = True
         assert len(self.gpuid.index) > 0, "Set a GPU index"
