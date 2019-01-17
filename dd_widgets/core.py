@@ -294,8 +294,10 @@ class ImageTrainerMixin(MLWidget):
                 parameters_mllib["geometry"]["zoom_factor"] = float(
                     self.zoom_factor.value
                 )
-            if self.geometry_prob.value != "":
+            if self.geometry_prob.value > 0.0:
                 parameters_mllib["geometry"]["prob"] = float(self.geometry_prob.value)
+            else:
+                del parameters_mllib["geometry"]
                 
         parameters_mllib["gpu"] = True
         assert len(self.gpuid.index) > 0, "Set a GPU index"
