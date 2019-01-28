@@ -279,9 +279,11 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
         )
 
         self.run_button = Button(description="Run training")
+        self.resume_button = Button(description="Resume")
         self.info_button = Button(description="Info")
-        self.stop_button = Button(description="Delete service")
+        self.delete_button = Button(description="Delete service")
         self.hardclear_button = Button(description="Hard clear")
+        self.lightclear_button = Button(description="Light clear")
 
         self._widgets = [  # typing: List[Widget]
             HTML(
@@ -289,17 +291,22 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
                     task=self.__class__.__name__, sname=self.sname
                 )
             ),
-            HBox([self.run_button, self.stop_button]),
-            HBox([self.info_button, self.hardclear_button]),
+            HBox([self.run_button, self.delete_button]),
+            HBox([self.resume_button, self.hardclear_button]),
+            HBox([self.info_button, self.lightclear_button]),
         ]
 
         self.run_button.on_click(RedirectOutput(self.output)(self.run))
+        self.resume_button.on_click(RedirectOutput(self.output)(self.resume))
         self.info_button.on_click(RedirectOutput(self.output)(self.info))
-        self.stop_button.on_click(
-            RedirectOutput(self.output, info_loghandler)(self.stop)
+        self.delete_button.on_click(
+            RedirectOutput(self.output, info_loghandler)(self.delete)
         )
         self.hardclear_button.on_click(
             RedirectOutput(self.output, info_loghandler)(self.hardclear)
+        )
+        self.lightclear_button.on_click(
+            RedirectOutput(self.output, info_loghandler)(self.lightclear)
         )
 
         for name, value, type_hint in self.typing_info(local_vars):

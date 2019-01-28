@@ -85,8 +85,8 @@ class TalkWithDD:
             self.status = json_dict["head"]
         return json_dict
 
-    def run(self, *_) -> JSONType:
-        logging.info("Entering run method")
+    def _create(self, *_) -> JSONType:
+        logging.info("Entering _create method")
         host = self.host.value
         port = self.port.value
         body = self._create_service_body()
@@ -136,7 +136,21 @@ class TalkWithDD:
                 )
             )
 
+    def run(self, *_) -> JSONType:
+        self._create()
+        return self.train(resume=False)
+
+    def resume(self, *_) -> JSONType:
+        self._create()
+        return self.train(resume=True)
+
+    def train(self, resume: bool=False, *_) -> JSONType:
         body = self._train_service_body()
+        host = self.host.value
+        port = self.port.value
+
+        if resume is True:
+            body['parameters']['mllib']['resume'] = True
 
         logging.info(
             "Start training phase: {body}".format(
@@ -162,7 +176,7 @@ class TalkWithDD:
         thread = threading.Thread(target=self.update_loop)
         thread.start()
 
-    def stop(self, *_) -> JSONType:
+    def delete(self, *_) -> JSONType:
 
         request = self.sname_url.format(
             host=self.host.value,
@@ -172,7 +186,7 @@ class TalkWithDD:
         )
         c = requests.delete(request)
         logging.info(
-            "Stop service {sname}: {json}".format(
+            "Delete service {sname}: {json}".format(
                 sname=self.sname, json=json.dumps(c.json(), indent=2)
             )
         )
@@ -181,10 +195,40 @@ class TalkWithDD:
             self.status = json_dict["head"]
         return json_dict
 
+    def lightclear(self, *_) -> JSONType:
+        # check why, but it seems we want to be sure we don't call the
+        # inherited version of self.create_service()
+        try:
+            TalkWithDD.create_service(self)
+        except RuntimeError:
+            pass
+        request = (self.sname_url + "?clear=lib").format(
+            host=self.host.value,
+            port=self.port.value,
+            path=self.path.value,
+            sname=self.sname,
+        )
+        c = requests.delete(request)
+        logging.info(
+            "Clearing (light) service {sname}: {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+
+        json_dict = c.json()
+        if "head" in json_dict:
+            self.status = json_dict["head"]
+        self.delete()
+
+        return json_dict
+
     def hardclear(self, *_) -> JSONType:
         # check why, but it seems we want to be sure we don't call the
         # inherited version of self.create_service()
-        TalkWithDD.create_service(self)
+        try:
+            TalkWithDD.create_service(self)
+        except RuntimeError:
+            pass
         request = (self.sname_url + "?clear=full").format(
             host=self.host.value,
             port=self.port.value,
@@ -201,6 +245,8 @@ class TalkWithDD:
         json_dict = c.json()
         if "head" in json_dict:
             self.status = json_dict["head"]
+
+        self.delete()
         return json_dict
 
     def update_loop(self) -> None:
