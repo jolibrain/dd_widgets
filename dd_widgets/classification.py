@@ -3,6 +3,8 @@ from typing import List, Optional
 
 from IPython.display import display
 
+import cv2
+
 from .core import ImageTrainerMixin, img_handle
 from .widgets import GPUIndex, Solver
 
@@ -11,10 +13,13 @@ class Classification(ImageTrainerMixin):
     ctc = False
 
     def display_img(self, args):
+        imread_args = tuple()
+        if self.unchanged_data.value:
+            imread_args = (cv2.IMREAD_UNCHANGED,)
         self.output.clear_output()
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path))
+                shape, img = img_handle(Path(path), imread_args=imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
