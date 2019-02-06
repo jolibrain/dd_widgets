@@ -8,6 +8,8 @@ import requests
 from notebook import notebookapp
 
 from .classification import Classification  # noqa: F401
+from .audio_classification import AudioClassification  # noqa: F401
+
 from .ddcsv import CSV  # noqa: F401
 from .detection import Detection  # noqa: F401
 from .ocr import OCR  # noqa: F401
