@@ -37,6 +37,7 @@ class Text(MLWidget):
         resume: bool = False,
         solver_type: Solver = "SGD",
         batch_size: int = 128,
+        test_batch_size: int = 32,
         shuffle: bool = True,
         tsplit: float = 0.2,
         min_count: int = 10,
@@ -200,7 +201,7 @@ class Text(MLWidget):
                                 "base_lr": self.base_lr.value,
                                 "solver_type": self.solver_type.value,
                             },
-                            "net": {"batch_size": self.batch_size.value},
+                            "net": {"batch_size": self.batch_size.value, "test_batch_size": self.test_batch_size.value},
                         },
                         "input": {
                             "shuffle": self.shuffle.value,
