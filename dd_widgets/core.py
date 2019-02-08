@@ -321,7 +321,7 @@ class ImageTrainerMixin(MLWidget):
 
         logging.info(
             "Parameters mllib: {}".format(
-                json.dumps(parameters_input, indent=2)
+                json.dumps(parameters_mllib, indent=2)
             )
         )
 
