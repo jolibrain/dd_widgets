@@ -27,7 +27,7 @@ class TextTrainerMixin(MLWidget):
             "regression": self.regression.value,
         }
 
-        if self.template.value is not None:
+        if self.template.value is None:
             del dic["template"]
 
         if self.regression.value:
