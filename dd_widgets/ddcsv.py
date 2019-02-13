@@ -29,6 +29,7 @@ class CSV(TextTrainerMixin):
         base_lr: float = 0.01,
         iterations: int = 100,
         test_interval: int = 1000,
+        snapshot_interval: int = 1000,
         step_size: int = 0,
         template: Optional[str] = None,
         layers: List[int] = [],
