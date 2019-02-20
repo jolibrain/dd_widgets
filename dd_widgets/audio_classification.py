@@ -116,21 +116,21 @@ class AudioClassification(ImageTrainerMixin):
 
         super().__init__(sname, locals())
 
-    def _train_body(self):
-        body = super()._train_body()
+    def _train_service_body(self):
+        body = super()._train_service_body()
 
-        tmp_dir = Path(self.tmp_dir.value())
-        train_dir = Path(self.training_repo.value())
-        test_dir = Path(self.testing_repo.value())
+        tmp_dir = Path(self.tmp_dir.value)
+        train_dir = Path(self.training_repo.value)
+        test_dir = Path(self.testing_repo.value)
         if not tmp_dir.exists():
             tmp_dir.mkdir(parents=True)
 
         build_dir(train_dir, tmp_dir / "train")
-        body['data'] = [tmp_dir / "train"]
+        body['data'] = [(tmp_dir / "train").as_posix()]
 
-        if test_dir is not None:
+        if self.testing_repo.value != "":
             build_dir(test_dir, tmp_dir / "test")
-            body['data'] += [tmp_dir / "test"]
+            body['data'] += [(tmp_dir / "test").as_posix()]
 
         return body
 
