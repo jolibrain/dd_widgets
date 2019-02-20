@@ -176,6 +176,8 @@ class TalkWithDD:
         thread = threading.Thread(target=self.update_loop)
         thread.start()
 
+        return json_dict
+
     def delete(self, *_) -> JSONType:
 
         request = self.sname_url.format(
