@@ -126,6 +126,11 @@ class OCR(ImageTrainerMixin):
                 for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
 
+    def _train_parameters_mllib(self) -> JSONType:
+        dic = super()._train_parameters_mllib()
+        dic["timesteps"] = self.timesteps.value
+        return dic
+
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
         dic["measure"] = ["acc"]

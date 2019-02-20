@@ -420,8 +420,6 @@ class ImageTrainerMixin(MLWidget):
             dic["class_weights"] = eval(self.class_weights.value)
         if self.ignore_label.value >= 0:
             dic["ignore_label"] = int(self.ignore_label.value)
-        if self.timesteps.value:
-            dic["timesteps"] = self.timesteps.value
 
         return dic
 

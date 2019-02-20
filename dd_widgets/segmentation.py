@@ -73,7 +73,6 @@ class Segmentation(ImageTrainerMixin):
         multi_label: bool = False,
         regression: bool = False,
         rand_skip: int = 0,
-        timesteps: int = 32,
         unchanged_data: bool = False,
         ctc: bool = False,
         target_repository: str = "",
