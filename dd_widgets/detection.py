@@ -103,7 +103,7 @@ class Detection(ImageTrainerMixin):
         return dic
 
     def _train_parameters_mllib(self) -> JSONType:
-        dic = super().train_parameters_mllib()
+        dic = super()._train_parameters_mllib()
         dic['bbox'] = True
         return dic
 
