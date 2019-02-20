@@ -1,3 +1,7 @@
+# dd_widgets
+
+DeepDetect Widgets for Jupyter Notebook
+
 ## Installation / activation of ipywidgets
 
 python3 -m pip install -U ipywidgets
