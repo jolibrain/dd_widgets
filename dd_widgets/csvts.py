@@ -56,7 +56,7 @@ class CSVTS(ImageTrainerMixin):
             self.file_list.options = [
                 x.as_posix()
                 for x in sample_from_iterable(
-                    Path(self.test_repo.value).glob("*"), 10
+                    Path(self.testing_repo.value).glob("*"), 10
                 )
             ]
 
