@@ -138,7 +138,10 @@ class JSONBuilder:
                         },
                     },
                 ),
-                ("model", self._create_model()),
+                (
+                    "model",
+                    {**self._create_model(), **self._append_create_model},
+                ),
             ]
         )
 
@@ -268,6 +271,8 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
         self._append_train_parameters_output = kwargs.get(
             "train_parameters_output", {}
         )
+
+        self._append_create_model = kwargs.get("create_model", {})
 
         self.sname = sname
         self.output = Output(layout=Layout(max_width="650px"))

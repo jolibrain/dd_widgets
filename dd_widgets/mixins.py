@@ -86,7 +86,7 @@ class TextTrainerMixin(MLWidget):
             }
 
         if self.class_weights.value:
-            dic['class_weights'] = eval(self.class_weights.value)
+            dic["class_weights"] = eval(self.class_weights.value)
 
         return dic
 
