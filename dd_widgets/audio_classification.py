@@ -22,6 +22,9 @@ def make_slice(total: int, size: int, step: int) -> Iterator[slice]:
 
     if step > size:
         logging.warn("step > size, you probably miss some part of the melody")
+    if total < size:
+        yield slice(0, total)
+        return
     for t in range(0, total - size, step):
         yield slice(t, t + size)
     if t + size < total:
@@ -44,7 +47,8 @@ def build_dir(src_dir: Path, dst_dir: Path):
         for file in tqdm(file_list, desc=directory.name):
             f = file.relative_to(src_dir)
             # do not open the file (long) if the image already exists!
-            if not (new_dir / f"{f.stem}_00000_00257.exr").exists():
+            if sum(1 for _ in new_dir.glob(f"{f.stem}_*.exr")) == 0:
+            # if not (new_dir / f"{f.stem}_00000_00257.exr").exists():
                 y, sr = librosa.load(file)
                 # 2^9 seems a good compromise, maybe pass it as a parameter in
                 # the future.
