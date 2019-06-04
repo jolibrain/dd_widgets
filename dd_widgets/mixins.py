@@ -242,7 +242,7 @@ class ImageTrainerMixin(MLWidget):
             "db": True,
         }
 
-        if self.unchanged_data:
+        if self.unchanged_data.value:
             parameters_input["unchanged_data"] = True
 
         if self.multi_label.value:
