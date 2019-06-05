@@ -98,5 +98,5 @@ class Classification(ImageTrainerMixin):
 
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
-        dic["measure"] = ["mcll", "f1", "acc-5"]
+        dic["measure"] = ["mcll", "f1", "acc-5", "cmdiag"]
         return dic
