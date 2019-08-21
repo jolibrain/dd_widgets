@@ -64,6 +64,9 @@ class Detection(ImageTrainerMixin):
         test_batch_size: int = 16,
         iter_size: int = 1,
         solver_type: Solver = "SGD",
+        lookahead: bool = False,
+        lookahead_steps: int = 6,
+        lookahead_alpha: float = 0.5,
         noise_prob: float = 0.001,
         distort_prob: float = 0.5,
         # -- geometry --

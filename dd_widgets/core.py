@@ -397,6 +397,9 @@ class ImageTrainerMixin(MLWidget):
                 "base_lr": self.base_lr.value,
                 "solver_type": self.solver_type.value,
                 "iter_size": self.iter_size.value,
+                "lookahead": self.lookahead.value,
+                "lookahead_steps": self.lookahead_steps.value,
+                "lookahead_alpha": self.lookahead_alpha.value,
             },
         }
         if self.__class__.__name__ == "Detection":

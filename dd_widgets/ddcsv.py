@@ -54,6 +54,9 @@ class CSV(MLWidget):
         scale_pos_weight: float = 1.0,
         shuffle: bool = True,
         solver_type: Solver = "AMSGRAD",
+        lookahead: bool = False,
+        lookahead_steps: int = 6,
+        lookahead_alpha: float = 0.5,
         autoencoder: bool = False,
         target_repository: str = ""
     ) -> None:
