@@ -12,6 +12,9 @@ class Solver(Enum):
     ADAGRAD = "ADAGRAD"
     ADADELTA = "ADADELTA"
     NESTEROV = "NESTEROV"
+    ADAMW = "ADAMW"
+    SGDW = "SGDW"
+    AMSGRADW ="AMSGRADW"
 
 
 class SolverDropdown(Dropdown):
