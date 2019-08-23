@@ -34,6 +34,8 @@ class Text(TextTrainerMixin):
         test_interval: int = 1000,
         snapshot_interval: int = 1000,
         base_lr: float = 0.001,
+        warmup_lr: float = 0.0001,
+        warmup_iter: int = 0,
         resume: bool = False,
         solver_type: Solver = "SGD",
         batch_size: int = 128,

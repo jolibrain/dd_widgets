@@ -66,6 +66,8 @@ class TextTrainerMixin(MLWidget):
                 "test_interval": self.test_interval.value,
                 "test_initialization": False,
                 "base_lr": self.base_lr.value,
+                "warmup_lr": self.warmup_lr.value,
+                "warmup_iter": self.warmup_iter.value,
                 "solver_type": self.solver_type.value,
             },
             "net": {
@@ -409,6 +411,8 @@ class ImageTrainerMixin(MLWidget):
                 "test_interval": self.test_interval.value,
                 "snapshot": self.snapshot_interval.value,
                 "base_lr": self.base_lr.value,
+                "warmup_lr": self.warmup_lr.value,
+                "warmup_iter": self.warmup_iter.value,
                 "solver_type": self.solver_type.value,
                 "iter_size": self.iter_size.value,
             },
