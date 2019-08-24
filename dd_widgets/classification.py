@@ -47,6 +47,8 @@ class Classification(ImageTrainerMixin):
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-4,
+        warmup_lr: float = 1e-5,
+        warmup_iter: int = 0,
         iterations: int = 10000,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,

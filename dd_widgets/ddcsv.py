@@ -27,6 +27,8 @@ class CSV(TextTrainerMixin):
         ntargets: int = 0,
         tsplit: float = 0.01,
         base_lr: float = 0.01,
+        warmup_lr: float = 0.001,
+        warmup_iter: int = 0,
         iterations: int = 100,
         test_interval: int = 1000,
         snapshot_interval: int = 1000,

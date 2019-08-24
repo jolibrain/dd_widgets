@@ -52,6 +52,8 @@ class Detection(ImageTrainerMixin):
         db_width: int = 0,
         db_height: int = 0,
         base_lr: float = 1e-4,
+        warmup_lr: float = 1e-5,
+        warmup_iter: int = 0,
         iterations: int = 10000,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,
