@@ -67,6 +67,9 @@ class TextTrainerMixin(MLWidget):
                 "test_initialization": False,
                 "base_lr": self.base_lr.value,
                 "solver_type": self.solver_type.value,
+                "lookahead": self.lookahead.value,
+                "lookahead_steps": self.lookahead_steps.value,
+                "lookahead_alpha": self.lookahead_alpha.value,
             },
             "net": {
                 "batch_size": self.batch_size.value,
@@ -410,6 +413,9 @@ class ImageTrainerMixin(MLWidget):
                 "snapshot": self.snapshot_interval.value,
                 "base_lr": self.base_lr.value,
                 "solver_type": self.solver_type.value,
+                "lookahead": self.lookahead.value,
+                "lookahead_steps": self.lookahead_steps.value,
+                "lookahead_alpha": self.lookahead_alpha.value,
                 "iter_size": self.iter_size.value,
             },
         }
