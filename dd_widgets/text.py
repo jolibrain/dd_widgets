@@ -41,6 +41,7 @@ class Text(TextTrainerMixin):
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
+        rectified : bool = False,
         batch_size: int = 128,
         shuffle: bool = True,
         tsplit: float = 0.2,

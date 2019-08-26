@@ -77,6 +77,7 @@ class Detection(ImageTrainerMixin):
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
+        rectified : bool = False,
         noise_prob: float = 0.001,
         distort_prob: float = 0.5,
         test_init: bool = False,

@@ -60,6 +60,7 @@ class CSV(TextTrainerMixin):
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
+        rectified : bool = False,
         autoencoder: bool = False,
         class_weights: List[float] = [],
         target_repository: str = "",

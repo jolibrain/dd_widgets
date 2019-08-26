@@ -72,6 +72,7 @@ class TextTrainerMixin(MLWidget):
                 "lookahead": self.lookahead.value,
                 "lookahead_steps": self.lookahead_steps.value,
                 "lookahead_alpha": self.lookahead_alpha.value,
+                "rectified": self.rectified.value,
             },
             "net": {
                 "batch_size": self.batch_size.value,
@@ -420,6 +421,7 @@ class ImageTrainerMixin(MLWidget):
                 "lookahead": self.lookahead.value,
                 "lookahead_steps": self.lookahead_steps.value,
                 "lookahead_alpha": self.lookahead_alpha.value,
+                "rectified": self.rectified.value,
                 "iter_size": self.iter_size.value,
             },
         }
