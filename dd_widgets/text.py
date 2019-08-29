@@ -42,6 +42,8 @@ class Text(TextTrainerMixin):
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
         rectified : bool = False,
+        decoupled_wd_periods : int = 4,
+        decoupled_wd_mult : float = 2.0,
         batch_size: int = 128,
         shuffle: bool = True,
         tsplit: float = 0.2,

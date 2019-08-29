@@ -149,6 +149,8 @@ class CSVTS(ImageTrainerMixin):
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
         rectified : bool = False,
+        decoupled_wd_periods : int = 4,
+        decoupled_wd_mult : float = 2.0,
         resume: bool = False,
         base_lr: float = 1e-4,
         warmup_lr: float = 1e-5,
