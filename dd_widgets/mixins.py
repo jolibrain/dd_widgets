@@ -73,6 +73,8 @@ class TextTrainerMixin(MLWidget):
                 "lookahead_steps": self.lookahead_steps.value,
                 "lookahead_alpha": self.lookahead_alpha.value,
                 "rectified": self.rectified.value,
+                "decoupled_wd_periods": self.decoupled_wd_periods.value,
+                "decoupled_wd_mult": self.decoupled_wd_mult.value,
             },
             "net": {
                 "batch_size": self.batch_size.value,
@@ -422,6 +424,8 @@ class ImageTrainerMixin(MLWidget):
                 "lookahead_steps": self.lookahead_steps.value,
                 "lookahead_alpha": self.lookahead_alpha.value,
                 "rectified": self.rectified.value,
+                "decoupled_wd_periods": self.decoupled_wd_periods.value,
+                "decoupled_wd_mult": self.decoupled_wd_mult.value,
                 "iter_size": self.iter_size.value,
             },
         }
