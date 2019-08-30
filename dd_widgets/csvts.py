@@ -148,6 +148,7 @@ class CSVTS(ImageTrainerMixin):
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
+        rectified : bool = False,
         resume: bool = False,
         base_lr: float = 1e-4,
         warmup_lr: float = 1e-5,
