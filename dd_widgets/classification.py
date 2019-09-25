@@ -5,12 +5,13 @@ from IPython.display import display
 
 import cv2
 
-from .core import ImageTrainerMixin, img_handle
+from .core import JSONType
+from .mixins import ImageTrainerMixin
+from .utils import img_handle
 from .widgets import GPUIndex, Solver
 
 
 class Classification(ImageTrainerMixin):
-    ctc = False
 
     def display_img(self, args):
         imread_args = tuple()
@@ -32,18 +33,22 @@ class Classification(ImageTrainerMixin):
         self,
         sname: str,
         *,  # unnamed parameters are forbidden
+        mllib: str = "caffe",
         training_repo: Path = None,
         testing_repo: Path = None,
+        description: str = "classification service",
+        model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
-        gpuid: GPUIndex = 0,
         path: str = "",
+        gpuid: GPUIndex = 0,
+        # -- specific
         nclasses: int = -1,
-        description: str = "classification service",
-        model_repo: Optional[str] = None,
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-4,
+        warmup_lr: float = 1e-5,
+        warmup_iter: int = 0,
         iterations: int = 10000,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,
@@ -64,19 +69,15 @@ class Classification(ImageTrainerMixin):
         test_batch_size: int = 16,
         iter_size: int = 1,
         solver_type: Solver = "SGD",
+        lookahead : bool = False,
+        lookahead_steps : int = 6,
+        lookahead_alpha : float = 0.5,
+        rectified : bool = False,
+        decoupled_wd_periods : int = 4,
+        decoupled_wd_mult : float = 2.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         # -- geometry --
-        all_effects: bool = False,
-        persp_horizontal: bool = False,
-        persp_vertical: bool = False,
-        zoom_out: bool = False,
-        zoom_in: bool = False,
-        pad_mode: str = "",
-        persp_factor: float = 0.25,
-        zoom_factor: float = 0.25,
-        geometry_prob: float = 0.0,
-        # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
         weights: Path = None,
@@ -85,10 +86,15 @@ class Classification(ImageTrainerMixin):
         multi_label: bool = False,
         regression: bool = False,
         rand_skip: int = 0,
-        timesteps: int = 32,
         unchanged_data: bool = False,
         ctc: bool = False,
-        target_repository: str = ""
+        target_repository: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())
+
+    def _train_parameters_output(self) -> JSONType:
+        dic = super()._train_parameters_output()
+        dic["measure"] = ["mcll", "f1", "acc-5", "cmdiag"]
+        return dic

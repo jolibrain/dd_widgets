@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,10 +7,13 @@ from IPython.display import display
 import pandas as pd
 from ipywidgets import HTML
 
-from .widgets import MLWidget
+from .core import JSONType
+from .widgets import GPUIndex, MLWidget
 
 
 class TSNE_CSV(MLWidget):
+    _type = "unsupervised"
+
     def __init__(
         self,
         sname: str,
@@ -23,12 +25,11 @@ class TSNE_CSV(MLWidget):
         host: str = "localhost",
         port: int = 1234,
         path: str = "",
-        # gpuid: GPUIndex = 0,
+        gpuid: GPUIndex = 0,
+        # -- tsne specific
         iterations: int = 5000,
         perplexity: int = 30,
-        csv_id: str = "",
-        csv_separator: str = ",",
-        # csv_label: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())
@@ -38,71 +39,31 @@ class TSNE_CSV(MLWidget):
         self._displays = HTML(value=self.csv.sample(5)._repr_html_())
         self._img_explorer.children = [self._displays, self.output]
 
-    def _create_service_body(self):
-        body = OrderedDict(
-            [
-                ("mllib", self.mllib.value),
-                ("description", self.sname),
-                ("type", "unsupervised"),
-                (
-                    "parameters",
-                    {
-                        "input": {"connector": "csv"},
-                        "mllib": {},
-                        "output": {"store_config": True},
-                    },
-                ),
-                (
-                    "model",
-                    {
-                        "repository": self.model_repo.value,
-                        "create_repository": True,
-                    },
-                ),
-            ]
-        )
+    def _create_parameters_input(self) -> JSONType:
+        return {"connector": "csv"}
 
-        return body
+    def _train_parameters_mllib(self) -> JSONType:
+        return {
+            "iterations": self.iterations.value,
+            "perplexity": self.perplexity.value,
+        }
 
-    def _train_body(self):
-
-        body = OrderedDict(
-            [
-                ("service", self.sname),
-                ("async", True),
-                (
-                    "parameters",
-                    {
-                        "mllib": {
-                            "iterations": self.iterations.value,
-                            "perplexity": self.perplexity.value,
-                        },
-                        "input": {
-                            "label": self.csv_label,
-                            "id": self.csv_id.value,
-                            "separator": self.csv_separator.value,
-                        },
-                        "output": {},
-                    },
-                ),
-                ("data", [self.training_repo.value]),
-            ]
-        )
-
-        return body
+    def _train_parameters_input(self) -> JSONType:
+        return {
+            "label": self.csv_label,
+            "id": self.csv_id.value,
+            "separator": self.csv_separator.value,
+        }
 
     def plot(self, **kwargs):
-        self.output.clear_output()
-        with self.output:
-            p = np.stack(
-                x["vals"] for x in self.last_info["body"]["predictions"]
-            )
-            fig, ax = plt.subplots(figsize=(10, 10))
-            ax.scatter(*p.T, **kwargs)
-            plt.close(fig)
-            display(fig)
+        p = np.stack(x["vals"] for x in self.last_info["body"]["predictions"])
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.scatter(*p.T, **kwargs)
+        plt.close(fig)
+        display(fig)
 
     def on_finished(self, info):
+        self.output.clear_output()
         with self.output:
             self.last_info = info
             self.plot()

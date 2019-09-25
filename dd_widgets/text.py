@@ -1,16 +1,16 @@
-from collections import OrderedDict
 from pathlib import Path
 from typing import List, Optional
 
 from ipywidgets import HBox, SelectMultiple
 
-from .core import sample_from_iterable
-from .widgets import MLWidget, Solver, GPUIndex
+from .core import JSONType
+from .mixins import TextTrainerMixin, sample_from_iterable
+from .widgets import Solver, GPUIndex
 
 alpha = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:’\“/\_@#$%^&*~`+-=<>()[]{}"
 
 
-class Text(MLWidget):
+class Text(TextTrainerMixin):
     def __init__(
         self,
         sname: str,
@@ -22,8 +22,9 @@ class Text(MLWidget):
         model_repo: Path = None,
         host: str = "localhost",
         port: int = 1234,
-        gpuid: GPUIndex = 0,
         path: str = "",
+        gpuid: GPUIndex = 0,
+        # -- specific
         regression: bool = False,
         db: bool = True,
         nclasses: int = -1,
@@ -34,8 +35,16 @@ class Text(MLWidget):
         test_interval: int = 1000,
         snapshot_interval: int = 1000,
         base_lr: float = 0.001,
+        warmup_lr: float = 0.0001,
+        warmup_iter: int = 0,
         resume: bool = False,
         solver_type: Solver = "SGD",
+        lookahead : bool = False,
+        lookahead_steps : int = 6,
+        lookahead_alpha : float = 0.5,
+        rectified : bool = False,
+        decoupled_wd_periods : int = 4,
+        decoupled_wd_mult : float = 2.0,
         batch_size: int = 128,
         test_batch_size: int = 32,
         shuffle: bool = True,
@@ -56,7 +65,14 @@ class Text(MLWidget):
         objective: str = '',
         class_weights: List[float] = [],
         scale_pos_weight: float = 1.0,
-        target_repository: str = ""
+        autoencoder: bool = False,
+        lregression: bool = False,
+        dropout: float = .2,
+        finetune: bool = False,
+        class_weights: List[float] = [],
+        test_batch_size: int = 16,
+        target_repository: str = "",
+        **kwargs
     ) -> None:
 
         super().__init__(sname, locals())
@@ -125,122 +141,30 @@ class Text(MLWidget):
             ]
             self.train_labels.value = []
 
-    def _create_service_body(self):
+    def _create_parameters_input(self) -> JSONType:
+        return {
+            "connector": "txt",
+            "characters": self.characters.value,
+            "sequence": self.sequence.value,
+            "read_forward": self.read_forward.value,
+            "alphabet": self.alphabet.value,
+            "sparse": self.sparse.value,
+            "embedding": self.embedding.value,
+        }
 
-        body = OrderedDict(
-            [
-                ("mllib", self.mllib.value),
-                ("description", "text classification service"),
-                ("type", "supervised"),
-                (
-                    "parameters",
-                    {
-                        "input": {
-                            "connector": "txt",
-                            "characters": self.characters.value,
-                            "sequence": self.sequence.value,
-                            "read_forward": self.read_forward.value,
-                            "alphabet": self.alphabet.value,
-                            "sparse": self.sparse.value,
-                            "embedding": self.embedding.value,
-                        },
-                        "mllib": {
-                            "template": self.template.value,
-                            "nclasses": self.nclasses.value,
-                            "layers": eval(self.layers.value),
-                            "activation": self.activation.value,
-                            "dropout": self.dropout.value,
-                            "db": self.db.value,
-                            "regression": self.regression.value,
-                        },
-                        "output": {"store_config": True},
-                    },
-                ),
-                (
-                    "model",
-                    {
-                        "templates": "../templates/caffe/",
-                        "repository": self.model_repo.value,
-                        "create_repository": True,
-                    },
-                ),
-            ]
-        )
-
-        if self.template.value is None:
-            del body["parameters"]["mllib"]["template"]
-
-        if self.regression.value:
-            del body["parameters"]["mllib"]["nclasses"]
-            body["parameters"]["mllib"]["ntargets"] = int(self.ntargets.value)
-
-        return body
-
-    def _train_body(self):
-        assert len(self.gpuid.index) > 0, "Set a GPU index"
-        body = OrderedDict(
-            [
-                ("service", self.sname),
-                ("async", True),
-                (
-                    "parameters",
-                    {
-                        "mllib": {
-                            "gpu": True,
-                            "resume": self.resume.value,
-                            "gpuid": (
-                                list(self.gpuid.index)
-                                if len(self.gpuid.index) > 1
-                                else self.gpuid.index[0]
-                            ),
-                            "solver": {
-                                "iterations": self.iterations.value,
-                                "test_interval": self.test_interval.value,
-                                "snapshot_interval": self.snapshot_interval.value,
-                                "test_initialization": False,
-                                "base_lr": self.base_lr.value,
-                                "solver_type": self.solver_type.value,
-                            },
-                            "net": {"batch_size": self.batch_size.value, "test_batch_size": self.test_batch_size.value},
-                        },
-                        "input": {
-                            "shuffle": self.shuffle.value,
-                            "test_split": self.tsplit.value,
-                            "min_count": self.min_count.value,
-                            "min_word_length": self.min_word_length.value,
-                            "count": self.count.value,
-                            "tfidf": self.tfidf.value,
-                            "sentences": self.sentences.value,
-                            "characters": self.characters.value,
-                            "sequence": self.sequence.value,
-                            "read_forward": self.read_forward.value,
-                            "alphabet": self.alphabet.value,
-                            "embedding": self.embedding.value,
-                            "db": self.db.value,
-                        },
-                        "output": {"measure": ["mcll", "f1", "cmdiag"]},
-                    },
-                ),
-                ("data", [self.training_repo.value]),
-            ]
-        )
-
-        if self.mllib.value == "xgboost":
-            del body["parameters"]["mllib"]["solver"]
-            body["parameters"]["mllib"]["iterations"] = self.iterations.value
-            body["parameters"]["mllib"]["objective"] = self.objective.value
-            body["parameters"]["mllib"]["booster_params"] = {}
-            body["parameters"]["mllib"]["booster_params"]["scale_pos_weight"] = self.scale_pos_weight.value
-            
-        if self.ignore_label.value != -1:
-            body["parameters"]["mllib"]["ignore_label"] = int(
-                self.ignore_label.value
-            )
-
-        if self.testing_repo.value:
-            body["data"].append(self.testing_repo.value)
-            
-        if self.class_weights.value:
-            body["parameters"]["mllib"]["class_weights"] = eval(self.class_weights.value)
-
-        return body
+    def _train_parameters_input(self) -> JSONType:
+        return {
+            "alphabet": self.alphabet.value,
+            "characters": self.characters.value,
+            "count": self.count.value,
+            "db": self.db.value,
+            "embedding": self.embedding.value,
+            "min_count": self.min_count.value,
+            "min_word_length": self.min_word_length.value,
+            "read_forward": self.read_forward.value,
+            "sentences": self.sentences.value,
+            "sequence": self.sequence.value,
+            "shuffle": self.shuffle.value,
+            "test_split": self.tsplit.value,
+            "tfidf": self.tfidf.value,
+        }
