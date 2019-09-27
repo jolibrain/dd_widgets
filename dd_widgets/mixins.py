@@ -38,6 +38,8 @@ class TextTrainerMixin(MLWidget):
             del dic["solver"]
             dic["iterations"] = self.iterations.value
             dic["db"] = False
+        elif self.mllib.value == "torch":
+            dic["gpu"] = True # force true at service creation with torch
 
         if self.lregression.value:
             dic["template"] = "lregression"
@@ -45,8 +47,11 @@ class TextTrainerMixin(MLWidget):
 
         if self.finetune.value:
             dic["finetuning"] = True
-            dic["weights"] = self.weights.value
+            if self.weights.value:
+                dic["weights"] = self.weights.value
 
+
+                
         return dic
 
     def _train_parameters_mllib(self) -> JSONType:

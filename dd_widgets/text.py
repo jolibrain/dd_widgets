@@ -64,9 +64,16 @@ class Text(TextTrainerMixin):
         lregression: bool = False,
         dropout: float = .2,
         finetune: bool = False,
+        weights: str = "",
         class_weights: List[float] = [],
         test_batch_size: int = 16,
         target_repository: str = "",
+        ##-- pytorch
+        ordered_words: bool = False,
+        wordpiece_tokens: bool = False,
+        punctuation_tokens: bool = False,
+        embedding_size: int = 768,
+        freeze_traced: bool = False,
         **kwargs
     ) -> None:
 
@@ -100,6 +107,9 @@ class Text(TextTrainerMixin):
         if self.characters:  # type: ignore
             self.db.value = True  # type: ignore
 
+        if self.mllib.value == "torch":
+            self.db.value = False
+            
     def display_text(self, args):
         self.output.clear_output()
         with self.output:
@@ -145,8 +155,17 @@ class Text(TextTrainerMixin):
             "alphabet": self.alphabet.value,
             "sparse": self.sparse.value,
             "embedding": self.embedding.value,
+            "ordered_words": self.ordered_words.value,
+            "wordpiece_tokens": self.wordpiece_tokens.value,
+            "punctuation_tokens": self.punctuation_tokens.value,
         }
 
+    def _create_parameters_mllib(self) -> JSONType:
+        dic = super()._create_parameters_mllib()
+        dic["embedding_size"] = self.embedding_size.value
+        dic["freeze_traced"] = self.freeze_traced.value
+        return dic
+    
     def _train_parameters_input(self) -> JSONType:
         return {
             "alphabet": self.alphabet.value,

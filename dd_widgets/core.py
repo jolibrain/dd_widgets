@@ -24,7 +24,7 @@ class TalkWithDD:
     def default_service_body(self) -> JSONType:
         return OrderedDict(
             [
-                ("mllib", "caffe"),
+                ("mllib", self.mllib),
                 ("description", self.sname),
                 ("type", "supervised"),
                 (
