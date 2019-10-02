@@ -35,7 +35,8 @@ class TextTrainerMixin(MLWidget):
             dic["ntargets"] = int(self.ntargets.value)
 
         if self.mllib.value == "xgboost":
-            del dic["solver"]
+            if "solver" in dic:
+                del dic["solver"]
             dic["iterations"] = self.iterations.value
             dic["db"] = False
         elif self.mllib.value == "torch":
@@ -93,10 +94,11 @@ class TextTrainerMixin(MLWidget):
         if self.mllib.value == "xgboost":
             del dic["solver"]
             dic["iterations"] = self.iterations.value
-            dic["objective"] = self.objective.value
-            dic["booster_params"] = {
-                "scale_pos_weight": self.scale_pos_weight.value
-            }
+            dic["objective"] = "multi:softprob" # default
+            # unset yet
+            #dic["booster_params"] = {
+            #    "scale_pos_weight": self.scale_pos_weight.value
+            #}
 
         if self.class_weights.value:
             dic["class_weights"] = eval(self.class_weights.value)
