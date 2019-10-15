@@ -93,6 +93,12 @@ class Detection(ImageTrainerMixin):
         unchanged_data: bool = False,
         target_repository: str = "",
         ctc: bool = False,
+            ssd_expand_prob: float = -1.0,
+            ssd_max_expand_ratio: float = -1.0,
+            ssd_mining_type: str = "",
+            ssd_neg_pos_ratio: float = -1.0,
+            ssd_neg_overlap: float = -1.0,
+            ssd_keep_top_k: int = -1,
         **kwargs
     ) -> None:
 
@@ -103,6 +109,17 @@ class Detection(ImageTrainerMixin):
         dic['bbox'] = True
         return dic
 
+    def _create_parameters_mllib(self) -> JSONType:
+        dic = super()._create_parameters_mllib()
+        net = {'ssd_expand_prob':ssd_expand_prob,
+               'ssd_max_expand_ratio':ssd_max_expand_ratio,
+               'ssd_mining_type':ssd_mining_type,
+               'ssd_neg_pos_ratio':ssd_neg_pos_ratio,
+               'ssd_neg_overlap':ssd_neg_overlap,
+               'ssd_keep_top_k':ssd_keep_top_k}
+        dic['net'].update(net)
+        return dic
+    
     def _train_parameters_input(self) -> JSONType:
         dic = super()._train_parameters_input()
         dic["db_width"] = self.db_width.value
