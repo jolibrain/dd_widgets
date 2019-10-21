@@ -93,12 +93,12 @@ class Detection(ImageTrainerMixin):
         unchanged_data: bool = False,
         target_repository: str = "",
         ctc: bool = False,
-            ssd_expand_prob: float = -1.0,
-            ssd_max_expand_ratio: float = -1.0,
-            ssd_mining_type: str = "",
-            ssd_neg_pos_ratio: float = -1.0,
-            ssd_neg_overlap: float = -1.0,
-            ssd_keep_top_k: int = -1,
+        ssd_expand_prob: float = -1.0,
+        ssd_max_expand_ratio: float = -1.0,
+        ssd_mining_type: str = "",
+        ssd_neg_pos_ratio: float = -1.0,
+        ssd_neg_overlap: float = -1.0,
+        ssd_keep_top_k: int = -1,
         **kwargs
     ) -> None:
 
@@ -111,13 +111,13 @@ class Detection(ImageTrainerMixin):
 
     def _create_parameters_mllib(self) -> JSONType:
         dic = super()._create_parameters_mllib()
-        net = {'ssd_expand_prob':ssd_expand_prob,
-               'ssd_max_expand_ratio':ssd_max_expand_ratio,
-               'ssd_mining_type':ssd_mining_type,
-               'ssd_neg_pos_ratio':ssd_neg_pos_ratio,
-               'ssd_neg_overlap':ssd_neg_overlap,
-               'ssd_keep_top_k':ssd_keep_top_k}
-        dic['net'].update(net)
+        net = {'ssd_expand_prob':self.ssd_expand_prob.value,
+               'ssd_max_expand_ratio':self.ssd_max_expand_ratio.value,
+               'ssd_mining_type':self.ssd_mining_type.value,
+               'ssd_neg_pos_ratio':self.ssd_neg_pos_ratio.value,
+               'ssd_neg_overlap':self.ssd_neg_overlap.value,
+               'ssd_keep_top_k':self.ssd_keep_top_k.value}
+        dic.update(net)
         return dic
     
     def _train_parameters_input(self) -> JSONType:
