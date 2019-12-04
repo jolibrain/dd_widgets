@@ -81,6 +81,7 @@ class TextTrainerMixin(MLWidget):
                 "rectified": self.rectified.value,
                 "decoupled_wd_periods": self.decoupled_wd_periods.value,
                 "decoupled_wd_mult": self.decoupled_wd_mult.value,
+                "lr_dropout": self.lr_dropout.value
             },
             "net": {
                 "batch_size": self.batch_size.value,
@@ -433,6 +434,7 @@ class ImageTrainerMixin(MLWidget):
                 "rectified": self.rectified.value,
                 "decoupled_wd_periods": self.decoupled_wd_periods.value,
                 "decoupled_wd_mult": self.decoupled_wd_mult.value,
+                "lr_dropout": self.lr_dropout.value,
                 "iter_size": self.iter_size.value,
             },
         }
