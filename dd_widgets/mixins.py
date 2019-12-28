@@ -352,7 +352,7 @@ class ImageTrainerMixin(MLWidget):
                  self.persp_factor.value,
                  self.zoom_factor.value,
                  self.pad_mode.value,
-                 self.prob.value,
+                 self.geometry_prob.value,
              ]
          ):
              dic["geometry"] = {}
