@@ -44,6 +44,7 @@ class Text(TextTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         batch_size: int = 128,
         shuffle: bool = True,
         tsplit: float = 0.2,
