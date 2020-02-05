@@ -8,7 +8,7 @@ import cv2
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class Classification(ImageTrainerMixin):
@@ -34,6 +34,7 @@ class Classification(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "DEFAULT",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "classification service",

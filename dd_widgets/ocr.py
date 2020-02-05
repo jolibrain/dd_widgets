@@ -8,7 +8,7 @@ import cv2
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle, sample_from_iterable
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class OCR(ImageTrainerMixin):
@@ -34,6 +34,7 @@ class OCR(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "OCR service",

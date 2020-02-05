@@ -15,7 +15,7 @@ from ipywidgets import VBox
 
 from .core import JSONType, TalkWithDD
 from .loghandler import OutputWidgetHandler
-from .types import GPUIndex, GPUSelect, Solver, SolverDropdown
+from .types import GPUIndex, GPUSelect, Solver, SolverDropdown, Engine, EngineDropdown
 
 # fmt: on
 
@@ -199,6 +199,7 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
         float: FloatText,
         bool: Checkbox,
         Solver: SolverDropdown,
+        Engine: EngineDropdown,
         GPUIndex: GPUSelect,
     }
 

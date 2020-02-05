@@ -6,7 +6,7 @@ from ipywidgets import HTML
 
 from .core import JSONType
 from .mixins import TextTrainerMixin
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class CSV(TextTrainerMixin):
@@ -15,6 +15,7 @@ class CSV(TextTrainerMixin):
         sname: str,
         *,
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "CSV service",
