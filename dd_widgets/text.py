@@ -69,10 +69,14 @@ class Text(TextTrainerMixin):
         class_weights: List[float] = [],
         test_batch_size: int = 16,
         target_repository: str = "",
-        ##-- pytorch
-        ordered_words: bool = False,
-        wordpiece_tokens: bool = False,
-        punctuation_tokens: bool = False,
+        ##-- new txt input conns stuff for bert and gpt2
+        ordered_words: bool = True,
+        wordpiece_tokens: bool = True,
+        punctuation_tokens: bool = True,
+        lower_case: bool =False,
+        word_start: str = "Ġ",
+        suffix_start: str = "",
+        ##--end bert, gpt2 new stuff
         embedding_size: int = 768,
         freeze_traced: bool = False,
         **kwargs
@@ -159,6 +163,9 @@ class Text(TextTrainerMixin):
             "ordered_words": self.ordered_words.value,
             "wordpiece_tokens": self.wordpiece_tokens.value,
             "punctuation_tokens": self.punctuation_tokens.value,
+            "lower_case": self.lower_case.value,
+            "word_start": self.word_start.value,
+            "suffix_start": self.suffix_start.value,
         }
 
     def _create_parameters_mllib(self) -> JSONType:
