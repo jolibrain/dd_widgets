@@ -25,6 +25,7 @@ class TextTrainerMixin(MLWidget):
             "layers": eval(self.layers.value),
             "autoencoder": self.autoencoder.value,
             "regression": self.regression.value,
+            "engine": self.engine.value
         }
 
         if self.template.value is None:
@@ -329,6 +330,9 @@ class ImageTrainerMixin(MLWidget):
         if self.multi_label.value:
             dic["db"] = False
 
+
+        dic["engine"] = self.engine.value
+
         crop_size = int(self.crop_size.value)
         if crop_size > 0:
             dic["crop_size"] = crop_size
@@ -437,6 +441,7 @@ class ImageTrainerMixin(MLWidget):
                 "lr_dropout": self.lr_dropout.value,
                 "iter_size": self.iter_size.value,
             },
+            "engine": self.engine.value,
         }
 
         if self.rand_skip.value > 0 and self.resume.value:

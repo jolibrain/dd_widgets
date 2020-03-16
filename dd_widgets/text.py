@@ -5,7 +5,7 @@ from ipywidgets import HBox, SelectMultiple
 
 from .core import JSONType
 from .mixins import TextTrainerMixin, sample_from_iterable
-from .widgets import Solver, GPUIndex
+from .widgets import Solver, GPUIndex, Engine
 
 alpha = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:’\“/\_@#$%^&*~`+-=<>()[]{}"
 
@@ -16,6 +16,7 @@ class Text(TextTrainerMixin):
         sname: str,
         *,
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path,
         testing_repo: Optional[Path] = None,
         description: str = "Text service",

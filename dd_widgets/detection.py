@@ -8,7 +8,7 @@ import cv2
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class Detection(ImageTrainerMixin):
@@ -37,6 +37,7 @@ class Detection(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "DEFAULT",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "Detection service",
@@ -73,7 +74,7 @@ class Detection(ImageTrainerMixin):
         pad_mode: str = "MIRRORED",
         persp_factor: float = 0.25,
         zoom_factor: float = 0.25,
-        geometry_prob: float = 0.5,
+        geometry_prob: float = 0.0,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,

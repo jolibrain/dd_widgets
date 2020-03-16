@@ -7,7 +7,7 @@ from ipywidgets import Button, HBox, SelectMultiple
 
 from .mixins import ImageTrainerMixin
 from .utils import sample_from_iterable
-from .widgets import GPUIndex, MLWidget, Solver
+from .widgets import GPUIndex, MLWidget, Solver, Engine
 
 
 class CSVTS(ImageTrainerMixin):

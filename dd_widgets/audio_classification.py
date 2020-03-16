@@ -12,7 +12,7 @@ import librosa
 from tqdm.autonotebook import tqdm
 
 from .mixins import ImageTrainerMixin
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 def make_slice(total: int, size: int, step: int) -> Iterator[slice]:
@@ -68,6 +68,7 @@ class AudioClassification(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
         testing_repo: Path = None,
         tmp_dir: Path = None,
