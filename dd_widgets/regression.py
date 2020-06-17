@@ -19,7 +19,7 @@ class Regression(ImageTrainerMixin):
             imread_args = (cv2.IMREAD_UNCHANGED,)
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path), imread_args)
+                shape, img = img_handle(path=Path(path), imread_args=imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
@@ -61,6 +61,14 @@ class Regression(ImageTrainerMixin):
         mirror: bool = False,
         rotate: bool = False,
         scale: float = 1.0,
+        persp_horizontal: bool = None,
+        persp_vertical: bool = None,
+        zoom_out: bool = None,
+        zoom_in: bool = None,
+        pad_mode: str = None,
+        persp_factor: str = None,
+        zoom_factor: str = None,
+        geometry_prob: str = None,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,
@@ -105,10 +113,25 @@ class Regression(ImageTrainerMixin):
         del dic["nclasses"]
         dic["db"] = False
         dic["ntargets"] = int(self.ntargets.value)
-        dic["finetuning"] = False
+        dic["finetuning"] = self.finetune.value
+        return dic
+
+    def _train_parameters_input(self) -> JSONType:
+        dic = super()._train_parameters_input()
+        dic["db"] = False
+        return dic
+
+    def _train_parameters_mllib(self) -> JSONType:
+        dic = super()._train_parameters_mllib()
+        dic["db"] = False
         return dic
 
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
+        dic["measure"] = ["eucll"]
+        return dic
+
+    def _create_parameters_output(self) -> JSONType:
+        dic = super()._create_parameters_output()
         dic["measure"] = ["eucll"]
         return dic
