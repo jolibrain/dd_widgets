@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from tempfile import mkstemp
 from typing import Iterator, List, Optional
+import glob
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,6 +49,7 @@ def build_dir(src_dir: Path, dst_dir: Path):
             f = file.relative_to(src_dir)
             # do not open the file (long) if the image already exists!
             if sum(1 for _ in new_dir.glob(f"{f.stem}_*.exr")) == 0:
+            #if sum(1 for _ in new_dir.glob("*/*.exr")) == 0:
             # if not (new_dir / f"{f.stem}_00000_00257.exr").exists():
                 y, sr = librosa.load(file)
                 # 2^9 seems a good compromise, maybe pass it as a parameter in
@@ -139,12 +141,20 @@ class AudioClassification(ImageTrainerMixin):
         if not tmp_dir.exists():
             tmp_dir.mkdir(parents=True)
 
-        build_dir(train_dir, tmp_dir / "train")
-        body['data'] = [(tmp_dir / "train").as_posix()]
+        exr_files = glob.glob(train_dir.as_posix() + '/*/*.exr')
+        if len(exr_files) == 0:
+            build_dir(train_dir, tmp_dir / "train")
+            body['data'] = [(tmp_dir / "train").as_posix()]
+        else:
+            body['data'] = [train_dir.as_posix()]
 
         if self.testing_repo.value != "":
-            build_dir(test_dir, tmp_dir / "test")
-            body['data'] += [(tmp_dir / "test").as_posix()]
+            exr_files = glob.glob(test_dir.as_posix() + '/*/*.exr')
+            if len(exr_files) == 0:
+                build_dir(test_dir, tmp_dir / "test")
+                body['data'] += (tmp_dir / "test").as_posix()
+            else:
+                body['data'] += test_dir.as_posix()
 
         return body
 
