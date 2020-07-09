@@ -35,6 +35,8 @@ class Text(TextTrainerMixin):
         test_interval: int = 1000,
         snapshot_interval: int = 1000,
         base_lr: float = 0.001,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 0.0001,
         warmup_iter: int = 0,
         resume: bool = False,
@@ -69,6 +71,7 @@ class Text(TextTrainerMixin):
         weights: str = "",
         class_weights: List[float] = [],
         test_batch_size: int = 16,
+        iter_size: int = 1,
         target_repository: str = "",
         ##-- new txt input conns stuff for bert and gpt2
         ordered_words: bool = True,

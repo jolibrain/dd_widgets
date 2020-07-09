@@ -31,6 +31,8 @@ class Segmentation(ImageTrainerMixin):
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-3,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 0.0001,
         warmup_iter: int = 0,
         db: bool = False,

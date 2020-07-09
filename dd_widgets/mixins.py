@@ -68,7 +68,7 @@ class TextTrainerMixin(MLWidget):
             "resume": self.resume.value,
             "solver": {
                 "iterations": self.iterations.value,
-                "iter_size": 1,
+                "iter_size": self.iter_size.value,
                 "snapshot_interval": self.snapshot_interval.value,
                 "test_interval": self.test_interval.value,
                 "test_initialization": False,
@@ -82,7 +82,8 @@ class TextTrainerMixin(MLWidget):
                 "rectified": self.rectified.value,
                 "decoupled_wd_periods": self.decoupled_wd_periods.value,
                 "decoupled_wd_mult": self.decoupled_wd_mult.value,
-                "lr_dropout": self.lr_dropout.value
+                "lr_dropout": self.lr_dropout.value,
+                "lr_policy": self.lr_policy.value,
             },
             "net": {
                 "batch_size": self.batch_size.value,
@@ -90,6 +91,9 @@ class TextTrainerMixin(MLWidget):
             },
         }
 
+        if self.stepvalue.value:
+            dic["solver"]["stepvalue"] = self.stepvalue.value
+        
         if self.ignore_label.value != -1:
             dic["ignore_label"] = int(self.ignore_label.value)
 
@@ -336,10 +340,10 @@ class ImageTrainerMixin(MLWidget):
         crop_size = int(self.crop_size.value)
         if crop_size > 0:
             dic["crop_size"] = crop_size
-        if self.noise_prob.value > 0.0:
-            dic["noise"] = {"all_effects": True, "prob": self.noise_prob.value}
-        if self.distort_prob.value > 0.0:
-            dic["distort"] = {
+        #if self.noise_prob.value > 0.0:
+        dic["noise"] = {"all_effects": True, "prob": self.noise_prob.value}
+        #if self.distort_prob.value > 0.0:
+        dic["distort"] = {
                 "all_effects": True,
                 "prob": self.distort_prob.value,
             }
@@ -442,10 +446,14 @@ class ImageTrainerMixin(MLWidget):
                 "decoupled_wd_mult": self.decoupled_wd_mult.value,
                 "lr_dropout": self.lr_dropout.value,
                 "iter_size": self.iter_size.value,
+                "lr_policy": self.lr_policy.value,
             },
             "engine": self.engine.value,
         }
 
+        if self.stepvalue.value:
+            dic["solver"]["stepvalue"] = self.stepvalue.value
+        
         if self.rand_skip.value > 0 and self.resume.value:
             dic["solver"]["rand_skip"] = self.rand_skip.value
         if self.class_weights.value:

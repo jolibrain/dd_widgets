@@ -140,6 +140,10 @@ class TalkWithDD:
         self._create()
         return self.train(resume=False)
 
+    def dry_run(self, *_) -> JSONType:
+        self._create()
+        return self.dry_train()
+    
     def resume(self, *_) -> JSONType:
         self._create()
         return self.train(resume=True)
@@ -177,6 +181,16 @@ class TalkWithDD:
         thread.start()
 
         return json_dict
+
+    def dry_train(self, *_) -> JSONType:
+        body = self._train_service_body()
+        host = self.host.value
+        port = self.port.value
+
+        print('host=',host,' / port=',port)
+        print('body=',body)
+        
+        return {}
 
     def delete(self, *_) -> JSONType:
 
