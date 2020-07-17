@@ -92,7 +92,7 @@ class TextTrainerMixin(MLWidget):
         }
 
         if self.stepvalue.value:
-            dic["solver"]["stepvalue"] = self.stepvalue.value
+            dic["solver"]["stepvalue"] = eval(self.stepvalue.value)
         
         if self.ignore_label.value != -1:
             dic["ignore_label"] = int(self.ignore_label.value)
@@ -452,7 +452,7 @@ class ImageTrainerMixin(MLWidget):
         }
 
         if self.stepvalue.value:
-            dic["solver"]["stepvalue"] = self.stepvalue.value
+            dic["solver"]["stepvalue"] = eval(self.stepvalue.value)
         
         if self.rand_skip.value > 0 and self.resume.value:
             dic["solver"]["rand_skip"] = self.rand_skip.value
