@@ -74,7 +74,7 @@ class CSVTS(ImageTrainerMixin):
             regression=True,
             db=False,
             dropout=0.0,
-            loss="L2",
+            loss=self.loss.value,
         )
         dic["gpu"] = True
         assert len(self.gpuid.index) > 0, "Set a GPU index"
@@ -163,6 +163,7 @@ class CSVTS(ImageTrainerMixin):
         test_initialization: bool = False,
         batch_size: int = 1000,
         test_batch_size: int = 100,
+        loss: str = "L2",
         **kwargs
     ):
         super().__init__(sname, locals())

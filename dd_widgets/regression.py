@@ -100,6 +100,7 @@ class Regression(ImageTrainerMixin):
         unchanged_data: bool = False,
         ctc: bool = False,
         target_repository: str = "",
+        loss: str = "L2",
         **kwargs
     ) -> None:
 
@@ -116,6 +117,7 @@ class Regression(ImageTrainerMixin):
         dic["db"] = False
         dic["ntargets"] = int(self.ntargets.value)
         dic["finetuning"] = self.finetune.value
+        dic["loss"] = self.loss.value
         return dic
 
     def _train_parameters_input(self) -> JSONType:
