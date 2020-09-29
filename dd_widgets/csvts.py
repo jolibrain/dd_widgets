@@ -66,6 +66,7 @@ class CSVTS(ImageTrainerMixin):
             "db": False,
             "label": eval(self.label_columns.value),
             "ignore": eval(self.ignore_columns.value),
+            "timesteps": self.timesteps.value,
         }
 
     def _create_parameters_mllib(self):
@@ -93,6 +94,7 @@ class CSVTS(ImageTrainerMixin):
             "db": False,
             "scale": True,
             "offset": 100,
+            "timesteps": self.timesteps.value,
         }
 
     def _train_parameters_mllib(self):
@@ -106,7 +108,6 @@ class CSVTS(ImageTrainerMixin):
                 else self.gpuid.index[0]
             ),
             "resume": self.resume.value,
-            "timesteps": self.timesteps.value,
             "net": {
                 "batch_size": self.batch_size.value,
                 "test_batch_size": self.test_batch_size.value,
