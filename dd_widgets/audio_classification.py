@@ -10,7 +10,7 @@ from IPython.display import Audio, Image, display
 
 import cv2
 import librosa
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 
 from .mixins import ImageTrainerMixin
 from .widgets import GPUIndex, Solver, Engine
