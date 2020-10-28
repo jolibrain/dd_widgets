@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from tempfile import mkstemp
 from typing import Iterator, List, Optional
+import glob
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,10 +10,10 @@ from IPython.display import Audio, Image, display
 
 import cv2
 import librosa
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 
 from .mixins import ImageTrainerMixin
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 def make_slice(total: int, size: int, step: int) -> Iterator[slice]:
@@ -48,6 +49,7 @@ def build_dir(src_dir: Path, dst_dir: Path):
             f = file.relative_to(src_dir)
             # do not open the file (long) if the image already exists!
             if sum(1 for _ in new_dir.glob(f"{f.stem}_*.exr")) == 0:
+            #if sum(1 for _ in new_dir.glob("*/*.exr")) == 0:
             # if not (new_dir / f"{f.stem}_00000_00257.exr").exists():
                 y, sr = librosa.load(file)
                 # 2^9 seems a good compromise, maybe pass it as a parameter in
@@ -68,6 +70,7 @@ class AudioClassification(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
         testing_repo: Path = None,
         tmp_dir: Path = None,
@@ -82,6 +85,8 @@ class AudioClassification(ImageTrainerMixin):
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-4,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 1e-5,
         warmup_iter: int = 0,
         iterations: int = 10000,
@@ -110,6 +115,7 @@ class AudioClassification(ImageTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         test_init: bool = False,
@@ -137,12 +143,20 @@ class AudioClassification(ImageTrainerMixin):
         if not tmp_dir.exists():
             tmp_dir.mkdir(parents=True)
 
-        build_dir(train_dir, tmp_dir / "train")
-        body['data'] = [(tmp_dir / "train").as_posix()]
+        exr_files = glob.glob(train_dir.as_posix() + '/*/*.exr')
+        if len(exr_files) == 0:
+            build_dir(train_dir, tmp_dir / "train")
+            body['data'] = [(tmp_dir / "train").as_posix()]
+        else:
+            body['data'] = [train_dir.as_posix()]
 
         if self.testing_repo.value != "":
-            build_dir(test_dir, tmp_dir / "test")
-            body['data'] += [(tmp_dir / "test").as_posix()]
+            exr_files = glob.glob(test_dir.as_posix() + '/*/*.exr')
+            if len(exr_files) == 0:
+                build_dir(test_dir, tmp_dir / "test")
+                body['data'] += (tmp_dir / "test").as_posix()
+            else:
+                body['data'] += test_dir.as_posix()
 
         return body
 

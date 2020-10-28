@@ -6,7 +6,7 @@ from ipywidgets import HTML
 
 from .core import JSONType
 from .mixins import TextTrainerMixin
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class CSV(TextTrainerMixin):
@@ -15,6 +15,7 @@ class CSV(TextTrainerMixin):
         sname: str,
         *,
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "CSV service",
@@ -27,6 +28,8 @@ class CSV(TextTrainerMixin):
         ntargets: int = 0,
         tsplit: float = 0.01,
         base_lr: float = 0.01,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 0.001,
         warmup_iter: int = 0,
         iterations: int = 100,
@@ -46,6 +49,7 @@ class CSV(TextTrainerMixin):
         ignore_label: Optional[int] = -1,
         batch_size: int = 128,
         test_batch_size: int = 16,
+        iter_size: int = 1,
         lregression: bool = False,
         scale: bool = False,
         label_offset: int = 0,
@@ -64,6 +68,7 @@ class CSV(TextTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         autoencoder: bool = False,
         class_weights: List[float] = [],
         target_repository: str = "",

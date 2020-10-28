@@ -8,7 +8,7 @@ import cv2
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class Regression(ImageTrainerMixin):
@@ -19,7 +19,7 @@ class Regression(ImageTrainerMixin):
             imread_args = (cv2.IMREAD_UNCHANGED,)
         with self.output:
             for path in args["new"]:
-                shape, img = img_handle(Path(path), imread_args)
+                shape, img = img_handle(path=Path(path), imread_args=imread_args)
                 if self.img_width.value == "":
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
@@ -33,6 +33,7 @@ class Regression(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "classification service",
@@ -47,6 +48,8 @@ class Regression(ImageTrainerMixin):
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-4,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 1e-5,
         warmup_iter: int = 0,
         iterations: int = 10000,
@@ -60,6 +63,14 @@ class Regression(ImageTrainerMixin):
         mirror: bool = False,
         rotate: bool = False,
         scale: float = 1.0,
+        persp_horizontal: bool = None,
+        persp_vertical: bool = None,
+        zoom_out: bool = None,
+        zoom_in: bool = None,
+        pad_mode: str = None,
+        persp_factor: str = None,
+        zoom_factor: str = None,
+        geometry_prob: str = None,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,
@@ -75,6 +86,7 @@ class Regression(ImageTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         test_init: bool = False,
@@ -88,6 +100,7 @@ class Regression(ImageTrainerMixin):
         unchanged_data: bool = False,
         ctc: bool = False,
         target_repository: str = "",
+        loss: str = "L2",
         **kwargs
     ) -> None:
 
@@ -103,10 +116,26 @@ class Regression(ImageTrainerMixin):
         del dic["nclasses"]
         dic["db"] = False
         dic["ntargets"] = int(self.ntargets.value)
-        dic["finetuning"] = False
+        dic["finetuning"] = self.finetune.value
+        dic["loss"] = self.loss.value
+        return dic
+
+    def _train_parameters_input(self) -> JSONType:
+        dic = super()._train_parameters_input()
+        dic["db"] = False
+        return dic
+
+    def _train_parameters_mllib(self) -> JSONType:
+        dic = super()._train_parameters_mllib()
+        dic["db"] = False
         return dic
 
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
+        dic["measure"] = ["eucll"]
+        return dic
+
+    def _create_parameters_output(self) -> JSONType:
+        dic = super()._create_parameters_output()
         dic["measure"] = ["eucll"]
         return dic

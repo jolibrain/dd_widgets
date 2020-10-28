@@ -8,7 +8,7 @@ import cv2
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class Classification(ImageTrainerMixin):
@@ -34,6 +34,7 @@ class Classification(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "DEFAULT",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "classification service",
@@ -47,6 +48,8 @@ class Classification(ImageTrainerMixin):
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-4,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 1e-5,
         warmup_iter: int = 0,
         iterations: int = 10000,
@@ -75,9 +78,20 @@ class Classification(ImageTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
         # -- geometry --
+        #all_effects: bool = False,
+        persp_horizontal: bool = False,
+        persp_vertical: bool = False,
+        zoom_out: bool = False,
+        zoom_in: bool = False,
+        pad_mode: str = "",
+        persp_factor: str = "",
+        zoom_factor: str = "",
+        geometry_prob: str = "",
+        # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],
         weights: Path = None,

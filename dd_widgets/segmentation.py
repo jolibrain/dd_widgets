@@ -8,7 +8,7 @@ import cv2
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class Segmentation(ImageTrainerMixin):
@@ -17,6 +17,7 @@ class Segmentation(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "Segmentation service",
@@ -30,6 +31,8 @@ class Segmentation(ImageTrainerMixin):
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
         base_lr: float = 1e-3,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 0.0001,
         warmup_iter: int = 0,
         db: bool = False,
@@ -59,8 +62,19 @@ class Segmentation(ImageTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
+        # -- geometry --
+        # all_effects: bool = False,
+        persp_horizontal: bool = False,
+        persp_vertical: bool = False,
+        zoom_out: bool = False,
+        zoom_in: bool = False,
+        pad_mode: str = "MIRRORED",
+        persp_factor: float = 0.25,
+        zoom_factor: float = 0.25,
+        geometry_prob: float = 0.0,
         # -- / geometry --
         test_init: bool = False,
         class_weights: List[float] = [],

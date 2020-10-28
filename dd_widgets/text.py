@@ -5,7 +5,7 @@ from ipywidgets import HBox, SelectMultiple
 
 from .core import JSONType
 from .mixins import TextTrainerMixin, sample_from_iterable
-from .widgets import Solver, GPUIndex
+from .widgets import Solver, GPUIndex, Engine
 
 alpha = "abcdefghijklmnopqrstuvwxyz0123456789,;.!?:’\“/\_@#$%^&*~`+-=<>()[]{}"
 
@@ -16,6 +16,7 @@ class Text(TextTrainerMixin):
         sname: str,
         *,
         mllib: str = "caffe",
+        engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path,
         testing_repo: Optional[Path] = None,
         description: str = "Text service",
@@ -35,6 +36,8 @@ class Text(TextTrainerMixin):
         test_interval: int = 1000,
         snapshot_interval: int = 1000,
         base_lr: float = 0.001,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],
         warmup_lr: float = 0.0001,
         warmup_iter: int = 0,
         resume: bool = False,
@@ -45,6 +48,7 @@ class Text(TextTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         batch_size: int = 128,
         test_batch_size: int = 32,
         shuffle: bool = True,
@@ -69,9 +73,21 @@ class Text(TextTrainerMixin):
         lregression: bool = False,
         dropout: float = .2,
         finetune: bool = False,
+        weights: str = "",
         class_weights: List[float] = [],
         test_batch_size: int = 16,
+        iter_size: int = 1,
         target_repository: str = "",
+        ##-- new txt input conns stuff for bert and gpt2
+        ordered_words: bool = True,
+        wordpiece_tokens: bool = True,
+        punctuation_tokens: bool = True,
+        lower_case: bool =False,
+        word_start: str = "Ġ",
+        suffix_start: str = "",
+        ##--end bert, gpt2 new stuff
+        embedding_size: int = 768,
+        freeze_traced: bool = False,
         **kwargs
     ) -> None:
 
@@ -105,6 +121,9 @@ class Text(TextTrainerMixin):
         if self.characters:  # type: ignore
             self.db.value = True  # type: ignore
 
+        if self.mllib.value == "torch":
+            self.db.value = False
+            
     def display_text(self, args):
         self.output.clear_output()
         with self.output:
@@ -150,8 +169,20 @@ class Text(TextTrainerMixin):
             "alphabet": self.alphabet.value,
             "sparse": self.sparse.value,
             "embedding": self.embedding.value,
+            "ordered_words": self.ordered_words.value,
+            "wordpiece_tokens": self.wordpiece_tokens.value,
+            "punctuation_tokens": self.punctuation_tokens.value,
+            "lower_case": self.lower_case.value,
+            "word_start": self.word_start.value,
+            "suffix_start": self.suffix_start.value,
         }
 
+    def _create_parameters_mllib(self) -> JSONType:
+        dic = super()._create_parameters_mllib()
+        dic["embedding_size"] = self.embedding_size.value
+        dic["freeze_traced"] = self.freeze_traced.value
+        return dic
+    
     def _train_parameters_input(self) -> JSONType:
         return {
             "alphabet": self.alphabet.value,

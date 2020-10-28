@@ -8,7 +8,7 @@ import cv2
 from .core import JSONType
 from .mixins import ImageTrainerMixin
 from .utils import img_handle
-from .widgets import GPUIndex, Solver
+from .widgets import GPUIndex, Solver, Engine
 
 
 class Detection(ImageTrainerMixin):
@@ -37,6 +37,7 @@ class Detection(ImageTrainerMixin):
         sname: str,
         *,  # unnamed parameters are forbidden
         mllib: str = "caffe",
+        engine: Engine = "DEFAULT",
         training_repo: Path = None,
         testing_repo: Path = None,
         description: str = "Detection service",
@@ -52,6 +53,8 @@ class Detection(ImageTrainerMixin):
         db_width: int = 0,
         db_height: int = 0,
         base_lr: float = 1e-4,
+        lr_policy: str = "fixed",
+        stepvalue: List[int] = [],    
         warmup_lr: float = 1e-5,
         warmup_iter: int = 0,
         iterations: int = 10000,
@@ -65,6 +68,15 @@ class Detection(ImageTrainerMixin):
         mirror: bool = False,
         rotate: bool = False,
         scale: float = 1.0,
+        all_effects: bool = False,
+        persp_horizontal: bool = True,
+        persp_vertical: bool = True,
+        zoom_out: bool = False,
+        zoom_in: bool = False,
+        pad_mode: str = "MIRRORED",
+        persp_factor: float = 0.25,
+        zoom_factor: float = 0.25,
+        geometry_prob: float = 0.0,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,
@@ -80,6 +92,7 @@ class Detection(ImageTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         noise_prob: float = 0.001,
         distort_prob: float = 0.5,
         test_init: bool = False,
@@ -93,6 +106,12 @@ class Detection(ImageTrainerMixin):
         unchanged_data: bool = False,
         target_repository: str = "",
         ctc: bool = False,
+        ssd_expand_prob: float = -1.0,
+        ssd_max_expand_ratio: float = -1.0,
+        ssd_mining_type: str = "",
+        ssd_neg_pos_ratio: float = -1.0,
+        ssd_neg_overlap: float = -1.0,
+        ssd_keep_top_k: int = -1,
         **kwargs
     ) -> None:
 
@@ -103,6 +122,17 @@ class Detection(ImageTrainerMixin):
         dic['bbox'] = True
         return dic
 
+    def _create_parameters_mllib(self) -> JSONType:
+        dic = super()._create_parameters_mllib()
+        net = {'ssd_expand_prob':self.ssd_expand_prob.value,
+               'ssd_max_expand_ratio':self.ssd_max_expand_ratio.value,
+               'ssd_mining_type':self.ssd_mining_type.value,
+               'ssd_neg_pos_ratio':self.ssd_neg_pos_ratio.value,
+               'ssd_neg_overlap':self.ssd_neg_overlap.value,
+               'ssd_keep_top_k':self.ssd_keep_top_k.value}
+        dic.update(net)
+        return dic
+    
     def _train_parameters_input(self) -> JSONType:
         dic = super()._train_parameters_input()
         dic["db_width"] = self.db_width.value

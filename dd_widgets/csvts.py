@@ -7,7 +7,7 @@ from ipywidgets import Button, HBox, SelectMultiple
 
 from .mixins import ImageTrainerMixin
 from .utils import sample_from_iterable
-from .widgets import GPUIndex, MLWidget, Solver
+from .widgets import GPUIndex, MLWidget, Solver, Engine
 
 
 class CSVTS(ImageTrainerMixin):
@@ -66,6 +66,7 @@ class CSVTS(ImageTrainerMixin):
             "db": False,
             "label": eval(self.label_columns.value),
             "ignore": eval(self.ignore_columns.value),
+            "timesteps": self.timesteps.value,
         }
 
     def _create_parameters_mllib(self):
@@ -74,7 +75,7 @@ class CSVTS(ImageTrainerMixin):
             regression=True,
             db=False,
             dropout=0.0,
-            loss="L2",
+            loss=self.loss.value,
         )
         dic["gpu"] = True
         assert len(self.gpuid.index) > 0, "Set a GPU index"
@@ -93,6 +94,7 @@ class CSVTS(ImageTrainerMixin):
             "db": False,
             "scale": True,
             "offset": 100,
+            "timesteps": self.timesteps.value,
         }
 
     def _train_parameters_mllib(self):
@@ -106,7 +108,6 @@ class CSVTS(ImageTrainerMixin):
                 else self.gpuid.index[0]
             ),
             "resume": self.resume.value,
-            "timesteps": self.timesteps.value,
             "net": {
                 "batch_size": self.batch_size.value,
                 "test_batch_size": self.test_batch_size.value,
@@ -151,6 +152,7 @@ class CSVTS(ImageTrainerMixin):
         rectified : bool = False,
         decoupled_wd_periods : int = 4,
         decoupled_wd_mult : float = 2.0,
+        lr_dropout : float = 1.0,
         resume: bool = False,
         base_lr: float = 1e-4,
         warmup_lr: float = 1e-5,
@@ -162,6 +164,7 @@ class CSVTS(ImageTrainerMixin):
         test_initialization: bool = False,
         batch_size: int = 1000,
         test_batch_size: int = 100,
+        loss: str = "L2",
         **kwargs
     ):
         super().__init__(sname, locals())

@@ -16,11 +16,24 @@ class Solver(Enum):
     SGDW = "SGDW"
     AMSGRADW ="AMSGRADW"
 
+class Engine(Enum):
+    CAFFE = "CAFFE"
+    CUDNN = "CUDNN"
+    DEFAULT = "DEFAULT"
+    CUDNN_SINGLE_HANDLE = "CUDNN_SINGLE_HANDLE"
+    CUDNN_MIN_MEMORY = "CUDNN_MIN_MEMORY"
+    CUDNN_MULTIPLE_HANDLES = "CUDNN_MULTIPLE_HANDLES"
 
 class SolverDropdown(Dropdown):
     def __init__(self, *args, **kwargs):
         Dropdown.__init__(
             self, *args, options=list(e.name for e in Solver), **kwargs
+        )
+
+class EngineDropdown(Dropdown):
+    def __init__(self, *args, **kwargs):
+        Dropdown.__init__(
+            self, *args, options=list(e.name for e in Engine), **kwargs
         )
 
 
