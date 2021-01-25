@@ -29,6 +29,10 @@ def img_handle(
     if not path.exists():
         raise ValueError("File {} does not exist".format(path))
     data = cv2.imread(path.as_posix(), *imread_args)
+    if data.shape[2] == 3:
+        data = cv2.cvtColor(data, cv2.COLOR_RGB2BGR)
+    elif data.shape[2] == 4:
+        data = cv2.cvtColor(data, cv2.COLOR_BGRA2RGB)
     _, fname = mkstemp(suffix=".png")
     fig, ax = plt.subplots()
     ax.imshow(data)
