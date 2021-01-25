@@ -31,7 +31,7 @@ class NBEATS(Timeseries):
         sname = self.get_predict_sname() if predict else self.sname
         parameters_input = {'connector':'csvts','db':False, 'separator':','}
         parameters_mllib = {'loss':'L1','template':'nbeats', 'template_params':{"stackdef": self.template_params}, 'db':False,'gpuid':self.gpuid,'gpu':True}
-        parameters_output = {}
+        parameters_output = {'store_config': not predict}
         model = {'repository':os.path.join(self.models_dir, model_name),'create_repository':True}
         try:
             creat = self.dd.put_service(sname,model,'kratos nbeats prediction','torch',parameters_input,parameters_mllib,parameters_output)
@@ -51,7 +51,7 @@ class NBEATS(Timeseries):
             'db':False,
             'ignore':self.ignore, 'separator':',','forecast_timesteps':self.forecast, 'backcast_timesteps':self.backcast
         }
-        solver_params = {'test_interval':2000, 'snapshot':20000, "iterations":500000, 'base_lr':0.01,'solver_type':'RANGER_PLUS', 'test_initialization':False}
+        solver_params = {'snapshot':20000, 'solver_type':'RANGER_PLUS', 'test_initialization':False}
         solver_params.update(self.solver_params)
 
         parameters_mllib = {
@@ -110,7 +110,7 @@ class NBEATS(Timeseries):
         npreds =  np.full(npoints,0,dtype=np.double)
         targets = np.full((npoints,nlabels),0, dtype=np.double)
 
-        for nline in tqdm.notebook.tqdm(range(0,num_lines-timesteps + self.pred_interval, self.pred_interval)): # sliding window
+        for nline in self.progress_bar(range(0,num_lines-timesteps + self.pred_interval, self.pred_interval)): # sliding window
             # take last iteration into account
             it_points = min(self.forecast, num_lines - self.backcast - nline)
 
@@ -195,7 +195,7 @@ class NBEATS(Timeseries):
 
         prev = raw_data[start-self.backcast:start,:]
 
-        for nline in tqdm.notebook.tqdm(range(start, stop, self.forecast)):
+        for nline in self.progress_bar(range(start, stop, self.forecast)):
             it_points = min(self.forecast, stop - nline)
             pred_line = nline - start
 
@@ -237,16 +237,16 @@ class NBEATS(Timeseries):
         predicted_models = []
         self.delete_service(predict = True)
 
-        for model in tqdm.notebook.tqdm(self.models):
+        for model in self.progress_bar(self.models):
             self.create_service(model, predict = True)
 
-            for datafile in tqdm.notebook.tqdm(self.datafiles):
+            for datafile in self.progress_bar(self.datafiles):
                 if datafile not in self.preds:
                     self.preds[datafile] = {}
                     self.errors[datafile] = {}
 
                 if model in self.preds[datafile] and not override:
-                    print("skipping predict for %s with model %s: already exist" % (datafile, model))
+                    self.log_progress("skipping predict for %s with model %s: already exist" % (datafile, model))
                     continue
 
                 datapath = os.path.join(self.datadir, datafile)
@@ -265,3 +265,4 @@ class NBEATS(Timeseries):
             self.delete_service(predict = True)
 
         self.dump_model_preds(predicted_models)
+        self.log_job_done()

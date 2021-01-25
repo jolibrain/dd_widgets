@@ -7,10 +7,12 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
-from scipy.optimize import curve_fit
 import tqdm
 from tqdm import notebook
+import IPython.display as jp_display
 import ipywidgets as widgets
+
+from . import anomalies as ano
 
 from dd_client import DD
 
@@ -73,7 +75,7 @@ def dump_data(data, labels, filename):
         datawriter.writerow(data[ts,:])
     file.close()
 
-def load_target(datafile,labels, progress = True):
+def load_target(datafile,labels):
     csvfile = open(datafile)
     csv_reader = csv.reader(csvfile, delimiter=',')
     header = next(csv_reader)
@@ -82,7 +84,7 @@ def load_target(datafile,labels, progress = True):
     for l in labels:
         col_labels.append(get_col(header,l))
 
-    for data in (tqdm.notebook.tqdm(csv_reader) if progress else csv_reader):
+    for data in csv_reader:
          targets.append([float(data[i]) for i in col_labels])
     return targets
 
@@ -116,17 +118,124 @@ def get_signal_mean_error(pred, targ, feat):
     return mean_error
 
 
+class AnomalyParameters:
+    def __init__(self,
+                method = "gaussian"):
+
+        self.method = method
+        self.smooth_factor = 20
+
+        # Gauss parameters
+        self.threshold = 3
+
+        # Votes & peaks parameters
+        # Total number of anomalies detected
+        self.n_anomalies = 40
+
+    def available_methods():
+        return ["gaussian", "peaks", "votes"]
+
+    def compute_anomalies(self, error):
+        """
+        Compute anomalies of signal based on the prediction
+        error on the signal
+        error: the error of signal
+        returns: list of anomaly dates (in timesteps), signal allowing to
+            compute anomalies (typically avg mean error), list of other
+            potential anomaly dates
+        """
+        c = self.smooth_factor + 1
+        conv = [1 / c] * c
+        ano_signal = None
+        ano_peaks = None
+
+        error_norm = normalize_error(np.absolute(error))
+
+        if self.method == "gaussian":
+            anomalies, ano_signal, ano_peaks = ano.anomaly_dates_gauss(error, self.threshold, conv)
+        elif self.method == "peaks":
+            # ano_signal = error_peaks(error_norm, conv=conv)
+            # anomalies = anomaly_dates(ano_signal, 20)
+            anomalies, ano_signal, ano_peaks = ano.anomaly_dates_peaks(error_norm, self.n_anomalies,conv=conv)
+        elif self.method == "votes":
+            # Does not work:
+            ano_signal = ano.error_vote(error_norm, self.n_anomalies, conv=conv)
+            anomalies = ano.anomaly_dates_votes(ano_signal, self.n_anomalies)
+        else:
+            raise ValueError(
+                "Unknown anomaly method: %s. Available methods are %s"
+                % (self.method, str(self.available_methods()))
+            )
+
+        return anomalies, ano_signal, ano_peaks
+
+    def get_anomaly_results(self, pred_anom, targ_anom):
+        """
+        Compute accuracy & recall of the model in predicting anomalies.
+        pred_anom: list of anomalies as obtained by the compute_anomalies()
+            method
+        targ_anom: bounds of anomalies to detect (ground truth)
+        Return: true positive / false negative / false positive
+        """
+        found = [False] * len(targ_anom)
+        fps = []
+
+        for anom in pred_anom:
+            match = False
+
+            for i in range(len(targ_anom)):
+                start, end = targ_anom[i]
+
+                if start <= anom <= end:
+                    found[i] = True
+                    match = True
+                    break
+
+            if not match:
+                fps.append(anom)
+
+        tp = sum([1 for i in found if i])
+        fn = len(targ_anom) - tp
+        return tp, fn, len(fps)
+
+    def get_anomaly_score(self, pred_anom, targ_anom):
+        """
+        Compute accuracy & recall of the model in predicting anomalies.
+        pred_anom: list of anomalies as obtained by the compute_anomalies()
+            method
+        targ_anom: bounds of anomalies to detect (ground truth)
+        Return: accuracy, recall
+        """
+        tp, fn, fp = self.get_anomaly_results(pred_anom, targ_anom)
+        return tp / (tp + fn), tp / (tp + fp)
 
 class Timeseries:
     """
     Train and predict timeseries in jupyter.
     """
-    def __init__(self, sname, host = "127.0.0.1", port = "8080", proto = 0, api_path = "",
-                model = None, models = [], models_dir = "/opt/platform/models/",
-                datafiles = [], datadir = "", output_dir = "/temp/predictions/",
-                labels = [], offset=50, gpuid = 0,
-                autoregressive = False, batch_size = 50, iter_size = 1,
-                iterations = 500000, base_lr=0.001, test_interval = 5000):
+    def __init__(self,
+                sname,
+                host = "127.0.0.1",
+                port = "8080",
+                proto = 0,
+                api_path = "",
+                model = None,
+                models = [],
+                models_dir = "/opt/platform/models/",
+                datafiles = [],
+                datadir = "",
+                output_dir = "/temp/predictions/",
+                labels = [],
+                offset=50,
+                gpuid = 0,
+                autoregressive = False,
+                batch_size = 50,
+                iter_size = 1,
+                iterations = 500000,
+                base_lr=0.001,
+                test_interval = 5000,
+                anomaly_params = AnomalyParameters(),
+                display_progress = True):
 
         self.sname = sname
         self.models = models
@@ -155,6 +264,10 @@ class Timeseries:
         """
         self.shift = 0
 
+        # error based anomaly detection
+        self.anomaly_params = anomaly_params
+        self.display_progress = display_progress
+
         # dict {dataset: target}
         self.targs = {}
         # dict { dataset: {model: preds / errors}}
@@ -163,6 +276,20 @@ class Timeseries:
         self.errors = {}
 
         self.dd = DD(host, port, proto, api_path)
+
+    def log_progress(self, msg):
+        if self.display_progress:
+            print(msg)
+
+    def log_job_done(self):
+        # jp_display.clear_output(wait = True)
+        self.log_progress("Done!")
+
+    def progress_bar(self, generator, leave = False):
+        if self.display_progress:
+            return tqdm.notebook.tqdm(generator, leave = leave)
+        else:
+            return generator
 
     def get_predict_sname(self):
         return self.sname + "_predict"
@@ -191,13 +318,13 @@ class Timeseries:
             models = self.models
 
         # models, preds, errors, datafiles, datadir, labels, output_dir,
-        for model in tqdm.notebook.tqdm(models):
+        for model in self.progress_bar(models):
             model_out_dir = os.path.join(self.output_dir, model)
 
             # print("creating", model_out_dir, "...")
             os.makedirs(model_out_dir, exist_ok = True)
 
-            for datafile in tqdm.notebook.tqdm(self.datafiles):
+            for datafile in self.progress_bar(self.datafiles):
                 pred_out_file, err_out_file = self.get_dump_filenames(datafile, model)
 
                 # needed if "test/"
@@ -215,13 +342,13 @@ class Timeseries:
             labels = self.labels;
 
         # return dict for each datafile with target
-        for datafile in tqdm.notebook.tqdm(self.datafiles):
+        for datafile in self.progress_bar(self.datafiles):
             targ_file = os.path.join(self.datadir, datafile)
             if not os.path.exists(targ_file):
-                print("cannot load target file %s: does not exist" % datafile)
+                self.log_progress("cannot load target file %s: does not exist" % datafile)
                 continue
 
-            self.targs[datafile] = np.array(load_target(targ_file, labels, progress = False))
+            self.targs[datafile] = np.array(load_target(targ_file, labels))
 
     def load_preds_errors(self):
         # return dict of dict for each datafile for each model
@@ -229,10 +356,10 @@ class Timeseries:
             model_out_dir = os.path.join(self.output_dir, model)
 
             if not os.path.exists(model_out_dir):
-                print("cannot load predictions for %s: model directory not found" % model)
+                self.log_progress("cannot load predictions for %s: model directory not found" % model)
                 continue
 
-            for datafile in tqdm.notebook.tqdm(self.datafiles):
+            for datafile in self.progress_bar(self.datafiles):
                 if datafile not in self.preds:
                     self.preds[datafile] = {}
                     self.errors[datafile] = {}
@@ -240,54 +367,11 @@ class Timeseries:
                 pred_out_file, err_out_file = self.get_dump_filenames(datafile, model)
 
                 if not os.path.exists(pred_out_file):
-                    print("cannot load predictions file %s" % pred_out_file)
+                    self.log_progress("cannot load predictions file %s" % pred_out_file)
                     continue
 
                 self.preds[datafile][model] = load_data(pred_out_file)
                 self.errors[datafile][model] = load_data(err_out_file)
-
-    def get_test_sets(targs):
-        """
-        Takes dict {dataset: target} as input, and
-        returns a list of tuple with the start and
-        end of test set in final dataset
-        """
-        ids_lengths = []
-        split_length = 0
-
-        for key in targs:
-            if "test/" in key:
-                # XXX: for nbeats, target is missing `backcast` values
-                # hence wrong computations of the test sets
-                l = targs[key].shape[0]
-                split_length = max(l, split_length)
-                match = re.match(r".*_(\d+)\.csv", key)
-
-                if match:
-                    ids_lengths.append((int(match.group(1)), l))
-
-        return [(i * split_length, i * split_length + l) for i, l in ids_lengths]
-
-    # Anomalies: see anomalies.py
-
-    def compute_anomalies(error_norm, error_nabs, method):
-        c = 201
-        conv = [1 / c] * c
-        ano_signal = None
-        ano_peaks = None
-
-        if method == "Peaks":
-            # ano_signal = error_peaks(error_norm, conv=conv)
-            # anomalies = anomaly_dates(ano_signal, 20)
-            anomalies, ano_signal, ano_peaks = anomaly_dates_peaks(error_norm, 20,conv=conv)
-        elif method == "Votes":
-            # Does not work:
-            ano_signal = error_vote(error_norm, 40, conv=conv)
-            anomalies = anomaly_dates(ano_signal, 40)
-        elif method == "Gaussian":
-            anomalies, ano_signal, ano_peaks = anomaly_dates_gauss(error_nabs)
-
-        return anomalies, ano_signal, ano_peaks
 
 
     # Plot / Widgets
@@ -364,7 +448,7 @@ class Timeseries:
         show_ui()
         return out
 
-    def display_compare(self, preds, targ, errors, signals, tstart, tend, title, tests = None, save = False):
+    def plot_forecast(self, preds, targ, errors, signals, tstart, tend, title, tests = None, save = False):
         # preds: dict {model: preds}
         # targ: raw target
         # signal: id of the signal (= line to display)
@@ -423,52 +507,7 @@ class Timeseries:
         else:
             plt.show()
 
-    def plot_anomalies(models, target, anomalies, signal, tstart, tend, title, shift):
-        """
-        anomalies: list of anomaly dates
-        """
-        hwidth = (tend - tstart) / 200
-        indices = np.arange(self.shift + tstart, self.shift + tend)
-        xstart = tstart + self.shift
-
-        fig = plt.figure(figsize = (len(self.models) * 6, 4))
-        axs = fig.subplots(1, len(self.models))
-        # fig.title(title)
-        fig.set_facecolor("w")
-
-        for i in range(len(self.models)):
-            model = self.models[i]
-            anomaly, ano_signal, ano_peaks = anomalies[model]
-            ax = axs[i] if len(self.models) > 1 else axs
-
-            ax.set_title(title + "\n" + model)
-            ax.set_xlabel("time")
-            ax.set_ylabel("amplitude")
-            ax.plot(indices, target[tstart:tend,signal], label="target")
-
-            # plot anomaly
-            # ax.scatter(anomaly, error[anomaly,signal], label = "anomalies", c="red", marker='x')
-            for i in anomaly:
-                if tstart < i < tend:
-                    ax.axvspan(i - hwidth + self.shift, i + hwidth + self.shift, facecolor='red', alpha=0.3)
-
-            if ano_signal is not None:
-                ano_signal = ano_signal / max(0.0001, np.max(np.absolute(ano_signal))) * np.max(target)
-                ax.plot(indices, ano_signal[tstart:tend], label="mean error")
-
-                if ano_peaks is not None:
-                    ano_peaks = ano_peaks[np.logical_and(tstart < ano_peaks, ano_peaks < tend)]
-                    ano_peaks_good = ano_peaks[np.in1d(ano_peaks, anomaly)]
-                    ano_peaks_bad = ano_peaks[~np.in1d(ano_peaks, anomaly)]
-                    ax.scatter(ano_peaks_good + self.shift, ano_signal[ano_peaks_good], label = "anomaly", c="red", marker='x', zorder = 3)
-                    # ax.scatter(ano_peaks_bad, ano_signal[ano_peaks_bad], label = "peak", c="blue", marker='x', zorder = 3)
-
-            ax.legend()
-
-        plt.tight_layout()
-        plt.show()
-
-    def compare_ui(self):
+    def forecast_ui(self):
         dataset_dropdown = widgets.Dropdown(
             options=self.datafiles,
             description='Dataset:'
@@ -503,6 +542,7 @@ class Timeseries:
         out = widgets.Output(layout={'border': '1px solid black'})
 
         def show_ui():
+            out.clear_output()
             with out:
                 display(dataset_dropdown,
                         label_dropdown,
@@ -511,7 +551,6 @@ class Timeseries:
                         run_button)
 
         def run_button_action(b):
-            out.clear_output()
             show_ui()
 
             start = start_text.value - self.shift
@@ -540,8 +579,6 @@ class Timeseries:
             if end > pred_len or duration_text.value <= 0:
                 end = pred_len
 
-            # save_all_graphs("/opt/platform/data/jolibrain/data_set_1/graphs/nbeats/", models, pred, targ, error, labels, shift, test_sets)
-
             with out:
                 print("n features: %d, n signals: %d" % (targ.shape[1], pred_len))
                 print("selected feature: %d" % feat)
@@ -549,20 +586,150 @@ class Timeseries:
                     if len(pred_norm[model]) == len(targ_norm):
                         print("mean error for %s: %f" % (model, get_signal_mean_error(pred_norm[model], targ_norm, feat)))
 
-                if False: # avg_alpha < 1:
-                    print("averaging with factor %f" % avg_alpha)
-                    error_norm = {i : exp_mean_avg(error_norm[i], avg_alpha) for i in error_norm}
-
-                # Anomalies detection
-                # anomalies = {i: compute_anomalies(error_norm[i], error_nabs[i], ano_method) for i in error_norm}
-
                 title = "%s signal from %d to %d " % (signame, start + self.shift, end + self.shift)
-                self.display_compare(pred, targ, error, [feat], start, end, title)
+                self.plot_forecast(pred, targ, error, [feat], start, end, title)
 
         run_button.on_click(run_button_action)
         show_ui()
         return out
 
+    def plot_anomalies(self, target, anomalies, targ_anom, signal, tstart, tend, title):
+        """
+        anomalies: list of anomaly dates
+        targ_anom: bounds where anomalies are located. Can be None.
+        """
+        hwidth = (tend - tstart) / 200
+        indices = np.arange(self.shift + tstart, self.shift + tend)
+        xstart = tstart + self.shift
+
+        fig = plt.figure(figsize = (len(self.models) * 6, 4))
+        axs = fig.subplots(1, len(self.models))
+        # fig.title(title)
+        fig.set_facecolor("w")
+
+        for i in range(len(self.models)):
+            model = self.models[i]
+            anomaly, ano_signal, ano_peaks = anomalies[model]
+            ax = axs[i] if len(self.models) > 1 else axs
+
+            ax.set_title(title + "\n" + model)
+            ax.set_xlabel("time")
+            ax.set_ylabel("amplitude")
+            ax.plot(indices, target[tstart:tend,signal], label="target")
+
+            # plot target anomaly periods
+            if targ_anom is not None:
+                for a, b in targ_anom:
+                    a = max(tstart + self.shift, a)
+                    b = min(tend + self.shift, b)
+
+                    if a < b:
+                        ax.axvspan(a, b, facecolor='green', alpha=0.3)
+
+            # plot anomaly
+            # ax.scatter(anomaly, error[anomaly,signal], label = "anomalies", c="red", marker='x')
+            for i in anomaly:
+                if tstart < i < tend:
+                    ax.axvspan(i - hwidth + self.shift, i + hwidth + self.shift, facecolor='red', alpha=0.3)
+
+            if ano_signal is not None:
+                # ano_signal = ano_signal / max(0.0001, np.max(np.absolute(ano_signal))) * np.max(target)
+                ax.plot(indices, ano_signal[tstart:tend], label="mean error")
+
+                if ano_peaks is not None:
+                    ano_peaks = ano_peaks[np.logical_and(tstart < ano_peaks, ano_peaks < tend)]
+                    ano_peaks_good = ano_peaks[np.in1d(ano_peaks, anomaly)]
+                    ano_peaks_bad = ano_peaks[~np.in1d(ano_peaks, anomaly)]
+                    ax.scatter(ano_peaks_good + self.shift, ano_signal[ano_peaks_good], label = "anomaly", c="red", marker='x', zorder = 3)
+                    # ax.scatter(ano_peaks_bad, ano_signal[ano_peaks_bad], label = "peak", c="blue", marker='x', zorder = 3)
+
+            ax.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+    def anomalies_ui(self, targ_anom = None):
+        dataset_dropdown = widgets.Dropdown(
+            options=self.datafiles,
+            description='Dataset:'
+        )
+        label_dropdown = widgets.Dropdown(
+            options=self.labels,
+            description='Label:'
+        )
+        start_text = widgets.BoundedIntText(
+            min=self.shift,
+            max=100000000,
+            value=0,
+            description='Start:'
+        )
+        duration_text = widgets.IntText(
+            value=-1,
+            description='Duration:'
+        )
+        # avg_alpha_text = widgets.FloatText(
+        #     value=1,
+        #     description='Exponential average coef:'
+        # )
+        # anomaly_dropdown = widgets.Dropdown(
+        #     options=["Peaks", "Votes", "Gaussian"],
+        #     description="Anomaly method:"
+        # )
+        run_button = widgets.Button(
+            description='Update',
+            tooltip='Update'
+        )
+
+        out = widgets.Output(layout={'border': '1px solid black'})
+
+        def show_ui():
+            out.clear_output()
+            with out:
+                display(dataset_dropdown,
+                        label_dropdown,
+                        start_text,
+                        duration_text,
+                        run_button)
+
+        def run_button_action(b):
+            show_ui()
+
+            start = start_text.value - self.shift
+            end = start_text.value + duration_text.value - self.shift
+            feat = self.labels.index(label_dropdown.value)
+            dset = dataset_dropdown.value
+
+            signame = self.labels[feat]
+            pred = self.preds[dset]
+            targ = self.targs[dset]
+            error = self.errors[dset]
+
+            pred_len = pred[self.models[0]].shape[0]
+
+            if end > pred_len or duration_text.value <= 0:
+                end = pred_len
+
+            with out:
+                print("n features: %d, n signals: %d" % (targ.shape[1], pred_len))
+                print("selected feature: %d" % feat)
+
+                # Anomalies detection
+                anomalies = {i: self.anomaly_params.compute_anomalies(error[i]) for i in error}
+
+                if targ_anom:
+                    for i in anomalies:
+                        pred_anom = [ano + self.shift for ano in anomalies[i][0]]
+                        print("true pos, false neg, false pos:", self.anomaly_params.get_anomaly_results(pred_anom, targ_anom))
+
+                title = "%s signal from %d to %d " % (signame, start + self.shift, end + self.shift)
+                # normalize_error = normalize only one signal. The name can be changed in the future.
+                self.plot_anomalies(normalize_error(targ), anomalies, targ_anom, feat, start, end, title)
+
+        run_button.on_click(run_button_action)
+        show_ui()
+        return out
+
+    # TODO make this method more practical to use from an external pov
     def save_all_graphs(self, dest, pred, targ, error, labels, test_sets):
         """
         Save all signals prediction graph
