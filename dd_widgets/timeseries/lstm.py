@@ -28,7 +28,7 @@ class LSTM(Timeseries):
         parameters_input = {'connector':'csvts','timesteps':self.timesteps,'db':False,'ignore':['timestamp'] + self.ignore_labels, 'separator':',',
                             'label':self.output_labels}
         parameters_mllib = {'loss':'L1','template':'recurrent', 'db':False,'gpuid':self.gpuid,'gpu':True, 'layers': self.layers, 'dropout':0.0, 'regression':True}
-        parameters_output = {}
+        parameters_output = {'store_config': not predict}
         model = {'repository':os.path.join(self.models_dir, model_name), 'create_repository': True}
         try:
             creat = self.dd.put_service(sname,model,'airbus timeserie prediction','torch',parameters_input,parameters_mllib,parameters_output)
@@ -118,16 +118,16 @@ class LSTM(Timeseries):
         predicted_models = []
         self.delete_service(predict = True)
 
-        for model in tqdm.notebook.tqdm(self.models):
+        for model in self.progress_bar(self.models):
             self.create_service(model, predict = True)
 
-            for datafile in tqdm.notebook.tqdm(self.datafiles):
+            for datafile in self.progress_bar(self.datafiles):
                 if datafile not in self.preds:
                     self.preds[datafile] = {}
                     self.errors[datafile] = {}
 
                 if model in self.preds[datafile] and not override:
-                    print("skipping predict for %s with model %s: already exist" % (datafile, model))
+                    self.log_progress("skipping predict for %s with model %s: already exist" % (datafile, model))
                     continue
 
                 datapath = os.path.join(self.datadir, datafile)
@@ -140,6 +140,7 @@ class LSTM(Timeseries):
             self.delete_service(predict = True)
 
         self.dump_model_preds(predicted_models)
+        self.log_job_done()
 
     ## Autoencoder part (TODO or remove)
 
@@ -174,7 +175,7 @@ class LSTM(Timeseries):
         cont = False
         npr = 0
 
-        for data in tqdm.notebook.tqdm(csv_reader):
+        for data in self.progress_bar(csv_reader):
             targets.append([float(data[i]) for i in col_labels])
             npr = npr + 1
             datawriter.writerow(data)
