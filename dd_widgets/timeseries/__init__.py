@@ -124,6 +124,8 @@ class AnomalyParameters:
 
         self.method = method
         self.smooth_factor = 20
+        self.labels = []
+        self.ignore = []
 
         # Gauss parameters
         self.threshold = 3
@@ -149,6 +151,13 @@ class AnomalyParameters:
         ano_signal = None
         ano_peaks = None
 
+        # eliminate ignored labels
+        col_ids = []
+        for lbl in self.labels:
+            if lbl not in self.ignore:
+                col_ids.append(get_col(self.labels,lbl))
+
+        error = error[:,col_ids]
         error_norm = normalize_error(np.absolute(error))
 
         if self.method == "gaussian":
@@ -225,7 +234,9 @@ class Timeseries:
                 datafiles = [],
                 datadir = "",
                 output_dir = "/temp/predictions/",
-                labels = [],
+                columns = [],
+                target_cols = [],
+                ignored_cols = [],
                 offset=50,
                 gpuid = 0,
                 autoregressive = False,
@@ -243,11 +254,14 @@ class Timeseries:
         self.datafiles = datafiles
         self.datadir = datadir
         self.output_dir = output_dir
-        self.labels = labels
+        self.columns = columns
+        self.target_cols = target_cols
+        self.ignored_cols = ignored_cols
         self.offset = offset
         self.batch_size = batch_size
         self.gpuid = gpuid
         self.autoregressive = autoregressive
+        self.display_progress = display_progress
 
         self.solver_params = {
             "iter_size": iter_size,
@@ -266,7 +280,7 @@ class Timeseries:
 
         # error based anomaly detection
         self.anomaly_params = anomaly_params
-        self.display_progress = display_progress
+        self.anomaly_params.labels = self.target_cols
 
         # dict {dataset: target}
         self.targs = {}
@@ -333,13 +347,13 @@ class Timeseries:
                 except FileExistsError:
                     pass
 
-                dump_data(self.preds[datafile][model], self.labels, pred_out_file)
-                dump_data(self.errors[datafile][model], self.labels, err_out_file)
+                dump_data(self.preds[datafile][model], self.target_cols, pred_out_file)
+                dump_data(self.errors[datafile][model], self.target_cols, err_out_file)
 
 
-    def load_targets(self, labels = None):
-        if labels is None:
-            labels = self.labels;
+    def load_targets(self, columns = None):
+        if columns is None:
+            columns = self.target_cols;
 
         # return dict for each datafile with target
         for datafile in self.progress_bar(self.datafiles):
@@ -348,7 +362,7 @@ class Timeseries:
                 self.log_progress("cannot load target file %s: does not exist" % datafile)
                 continue
 
-            self.targs[datafile] = np.array(load_target(targ_file, labels))
+            self.targs[datafile] = np.array(load_target(targ_file, columns))
 
     def load_preds_errors(self):
         # return dict of dict for each datafile for each model
@@ -370,6 +384,7 @@ class Timeseries:
                     self.log_progress("cannot load predictions file %s" % pred_out_file)
                     continue
 
+                # FIXME pass columns to load_data (in case it changed before)
                 self.preds[datafile][model] = load_data(pred_out_file)
                 self.errors[datafile][model] = load_data(err_out_file)
 
@@ -398,7 +413,7 @@ class Timeseries:
             description='Dataset:'
         )
         label_dropdown = widgets.Dropdown(
-            options=self.labels,
+            options=self.target_cols,
             description='Label:'
         )
         start_text = widgets.BoundedIntText(
@@ -431,10 +446,10 @@ class Timeseries:
 
             start = start_text.value
             end = start_text.value + duration_text.value
-            feat = self.labels.index(label_dropdown.value)
+            feat = self.target_cols.index(label_dropdown.value)
             dset = dataset_dropdown.value
 
-            signame = self.labels[feat]
+            signame = self.target_cols[feat]
             targ = self.targs[dset]
 
             if end >= len(targ) or duration_text.value <= 0:
@@ -513,7 +528,7 @@ class Timeseries:
             description='Dataset:'
         )
         label_dropdown = widgets.Dropdown(
-            options=self.labels,
+            options=self.target_cols,
             description='Label:'
         )
         start_text = widgets.BoundedIntText(
@@ -555,12 +570,12 @@ class Timeseries:
 
             start = start_text.value - self.shift
             end = start_text.value + duration_text.value - self.shift
-            feat = self.labels.index(label_dropdown.value)
+            feat = self.target_cols.index(label_dropdown.value)
             dset = dataset_dropdown.value
             # avg_alpha = avg_alpha_text.value
             # ano_method = anomaly_dropdown.value
 
-            signame = self.labels[feat]
+            signame = self.target_cols[feat]
             pred = self.preds[dset]
             targ = self.targs[dset]
             error_nabs = self.errors[dset]
@@ -654,7 +669,7 @@ class Timeseries:
             description='Dataset:'
         )
         label_dropdown = widgets.Dropdown(
-            options=self.labels,
+            options=self.target_cols,
             description='Label:'
         )
         start_text = widgets.BoundedIntText(
@@ -696,10 +711,10 @@ class Timeseries:
 
             start = start_text.value - self.shift
             end = start_text.value + duration_text.value - self.shift
-            feat = self.labels.index(label_dropdown.value)
+            feat = self.target_cols.index(label_dropdown.value)
             dset = dataset_dropdown.value
 
-            signame = self.labels[feat]
+            signame = self.target_cols[feat]
             pred = self.preds[dset]
             targ = self.targs[dset]
             error = self.errors[dset]
@@ -741,6 +756,6 @@ class Timeseries:
             pred_norm, targ_norm = normalize_data(pred[models[0]][:,feat], targ[:,feat])
             mean_error = np.mean(np.absolute(targ_norm - pred_norm))
 
-            signame = self.labels[feat] + "_" + str(mean_error)
+            signame = self.target_cols[feat] + "_" + str(mean_error)
             print(signame)
             self.display_compare(pred, targ, error, [feat], 0, max_i, signame + " whole signal", tests = test_sets, save = dest + signame + ".png")

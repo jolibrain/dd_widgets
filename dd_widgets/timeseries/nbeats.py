@@ -12,12 +12,14 @@ from . import *
 
 class NBEATS(Timeseries):
 
-    def __init__(self, backcast, forecast,
+    def __init__(self,
+                backcast,
+                forecast,
                 template_params = ["g512", "g512", "b5", "h512"],
-                ignore = [], pred_interval = 20, **kwargs):
+                pred_interval = 20,
+                **kwargs):
 
         super().__init__(**kwargs)
-        self.ignore = ignore
         self.backcast = backcast
         self.forecast = forecast
         self.template_params = template_params
@@ -49,7 +51,7 @@ class NBEATS(Timeseries):
             'scale':True,
             'offset':self.offset,
             'db':False,
-            'ignore':self.ignore, 'separator':',','forecast_timesteps':self.forecast, 'backcast_timesteps':self.backcast
+            'ignore':self.ignored_cols, 'separator':',','forecast_timesteps':self.forecast, 'backcast_timesteps':self.backcast
         }
         solver_params = {'snapshot':20000, 'solver_type':'RANGER_PLUS', 'test_initialization':False}
         solver_params.update(self.solver_params)
@@ -93,7 +95,7 @@ class NBEATS(Timeseries):
 
         col_labels = []
         for l in header:
-            if l not in self.ignore:
+            if l not in self.ignored_cols:
                 col_labels.append(get_col(header,l))
 
         npoints = num_lines-self.backcast
@@ -179,7 +181,7 @@ class NBEATS(Timeseries):
 
         col_labels = []
         for l in header:
-            if l not in self.ignore:
+            if l not in self.ignored_cols:
                 col_labels.append(get_col(header,l))
 
         npoints = stop - start
