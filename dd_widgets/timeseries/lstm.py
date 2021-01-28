@@ -10,10 +10,13 @@ from . import *
 
 class LSTM(Timeseries):
 
-    def __init__(self, output_labels, pred_distance, ignore_labels = [], layers = ["L256", "L256"], timesteps = 400, **kwargs):
+    def __init__(self,
+                pred_distance,
+                layers = ["L256", "L256"],
+                timesteps = 400,
+                **kwargs):
+
         super().__init__(**kwargs)
-        self.output_labels = output_labels
-        self.ignore_labels = ignore_labels
         self.layers = layers
         # distance of prediction in timesteps
         self.pred_distance = pred_distance
@@ -25,8 +28,8 @@ class LSTM(Timeseries):
 
     def create_service(self, model_name, predict = False):
         sname = self.get_predict_sname() if predict else self.sname
-        parameters_input = {'connector':'csvts','timesteps':self.timesteps,'db':False,'ignore':['timestamp'] + self.ignore_labels, 'separator':',',
-                            'label':self.output_labels}
+        parameters_input = {'connector':'csvts','timesteps':self.timesteps,'db':False,'ignore':self.ignored_cols, 'separator':',',
+                            'label':self.target_cols}
         parameters_mllib = {'loss':'L1','template':'recurrent', 'db':False,'gpuid':self.gpuid,'gpu':True, 'layers': self.layers, 'dropout':0.0, 'regression':True}
         parameters_output = {'store_config': not predict}
         model = {'repository':os.path.join(self.models_dir, model_name), 'create_repository': True}
@@ -43,7 +46,7 @@ class LSTM(Timeseries):
             'scale':True,
             'offset':self.offset,
             'db':False,
-            'ignore':['timestamp'] + self.ignore_labels, 'separator':',','label':self.output_labels
+            'ignore':['timestamp'] + self.ignored_cols, 'separator':',','label':self.target_cols
         }
         solver_params = {'test_interval':2000, 'snapshot':2000, "iterations":500000, 'base_lr':0.001, 'solver_type':'RANGER_PLUS', 'clip': True, 'test_initialization':False}
         solver_params.update(self.solver_params)
@@ -72,7 +75,7 @@ class LSTM(Timeseries):
         csv_reader = csv.reader(csvfile, delimiter=',')
         header = next(csv_reader)
         col_labels = []
-        for l in self.output_labels:
+        for l in self.target_cols:
             col_labels.append(get_col(header,l))
 
         nsteps = 0
@@ -112,7 +115,7 @@ class LSTM(Timeseries):
     # TODO Merge common parts with nbeats into timeseries?
     def predict_all(self, nsteps_before_predict = 10000, override = False):
         if not override:
-            self.load_targets(self.output_labels)
+            self.load_targets()
             self.load_preds_errors()
 
         predicted_models = []
