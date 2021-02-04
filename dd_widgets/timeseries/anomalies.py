@@ -44,54 +44,9 @@ def gauss(x, *p):
     A, mu, sigma = p
     return A*np.exp(-(x-mu)**2/(2.*sigma**2))
 
-def build_multigauss_error_model(error, signal, ngaussians, display=False):
-    """
-    Fit multiple gaussians instead of one
-    this function is not used in the project.
-    """
-    mean_error = np.mean(error,axis=0)
-    max_error = np.max(error,axis=0)
-    min_error = np.min(error,axis=0)
-
-    coeffs= []
-    for signal_id in [signal]:
-        print("mean error: " + str(mean_error[signal_id]))
-        print("max error: " + str(max_error[signal_id]))
-        print("min error: " + str(min_error[signal_id]))
-
-        data = error[:,signal_id]
-
-        hist, bin_edges = np.histogram(data, density=True)
-        bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
-
-        if display:
-            plt.plot(bin_centres, hist, label='Test data')
-
-        p0 = []
-        errorlinspace = np.linspace(min_error[signal_id],max_error[signal_id],ngaussians+2)
-        for i in range(ngaussians):
-            p0.append(1.0)
-        for i in range(ngaussians):
-            p0.append(errorlinspace[i+1])
-        for i in range(ngaussians):
-            p0.append((max_error[signal_id]-min_error[signal_id])/float(ngaussians))
-
-        coeff, var_matrix = curve_fit(gaussSum, bin_centres, hist, p0=p0, method='trf')
-
-        if display:
-            hist_fit = gaussSum(bin_centres, *coeff)
-            plt.plot(bin_centres, hist_fit, label='Fitted data')
-            plt.show()
-
-        coeffs.append(coeff)
-        for i in range(ngaussians):
-            print('Fitted mean = ' + str(coeff[i*3+1]))
-            print('Fitted standard deviation = ' + str(coeff[i*3+2]))
-
-    return coeffs
-
 def build_gauss_error_model(error, nbuckets = 100, display = False):
     mean_error = np.mean(error)
+    sd_error = np.sqrt(np.mean((error - mean_error)**2))
     max_error = np.max(error)
     min_error = np.min(error)
 
@@ -99,11 +54,13 @@ def build_gauss_error_model(error, nbuckets = 100, display = False):
         print("mean error: " + str(mean_error))
         print("max error: " + str(max_error))
         print("min error: " + str(min_error))
+        print("sd error: " + str(sd_error))
 
     hist, bin_edges = np.histogram(error, nbuckets, density=True)
     bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+    default_A = max(hist)
 
-    p0 = [1.0, max_error-min_error,max_error-min_error ]
+    p0 = [default_A, mean_error, sd_error]
     coeff, var_matrix = curve_fit(gauss, bin_centres, hist, p0=p0, method='trf')
 
     if display:
@@ -112,44 +69,79 @@ def build_gauss_error_model(error, nbuckets = 100, display = False):
 
     return coeff, bin_centres, hist
 
-def display_gauss_error_model(bins, hist, coeff, title = "", xmin = -10, xmax = 10):
+def get_error_distribution(error, nbuckets = 100, display = False):
+    mean_error = np.mean(error)
+    sd_error = np.sqrt(np.mean((error - mean_error)**2))
+    max_error = np.max(error)
+    min_error = np.min(error)
+
+    if display:
+        print("mean error: " + str(mean_error))
+        print("max error: " + str(max_error))
+        print("min error: " + str(min_error))
+        print("sd error: " + str(sd_error))
+
+    hist, bin_edges = np.histogram(error, nbuckets, density=True)
+    bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+
+    default_A = max(hist)
+    coeff = (default_A, mean_error, sd_error)
+
+    return coeff, bin_centres, hist
+
+def display_error_distribution(bins, hist, coeff, title = "", xmin = -10, xmax = 10):
+    plt.title(title)
+    plt.xlabel("error amplitude")
+    plt.ylabel("proportion of elements")
+
     plt.plot(bins, hist, label='measured error')
     hist_fit = gauss(bins, *coeff)
     stddev = coeff[2]
     plt.plot(bins, hist_fit, label='modeled error')
-    plt.title("error / model")
-    plt.xlabel("error amplitude")
     plt.xlim((xmin * stddev ,xmax * stddev))
-    plt.ylabel("proportion of elements")
-    plt.title(title)
+
     plt.legend()
     plt.show()
 
-def anomaly_dates_gauss(error, stddev_threshold = 3, conv = None):
-    error_dev = np.zeros(error.shape[0])
-    total = 0
+class ErrorNormalizationModel:
+    def __init__(self):
+        self.coeffs = []
 
-    for i in range(error.shape[1]):
-        try:
+    def fit(self, error, conv = None, fit_gauss = False, display = False):
+        self.coeffs = []
+
+        for i in range(error.shape[1]):
             error_i = error[:,i]
-            coeff, bins, hist = build_gauss_error_model(error_i)
+            error_i = conv_error(error_i, conv)
+            if fit_gauss:
+                coeff, bins, hist = build_gauss_error_model(error_i, display = display)
+            else:
+                coeff, bins, hist = get_error_distribution(error_i, display = display)
             _, mean, stddev = coeff
 
-            print(mean, stddev)
-            display_gauss_error_model(bins, hist, coeff, "error")
+            if display:
+                display_error_distribution(bins, hist, coeff, "error distribution")
 
-            error_dev += np.absolute(error_i - mean) / stddev
+            self.coeffs.append((mean, stddev))
+
+    def anomaly_dates(self, error, stddev_threshold = 3, conv = None, display = False):
+        error_dev = np.zeros(error.shape[0])
+        total = 0
+
+        for i in range(error.shape[1]):
+            mean, stddev = self.coeffs[i]
+            error_i = error[:,i]
+            error_i = conv_error(error_i, conv)
+            error_dev += np.absolute(error_i - mean) / abs(stddev)
             total += 1
-        except:
-            print("skipped %d" % i)
-            pass
 
-    error_dev /= total
-    error_dev = conv_error(error_dev, conv)
-    ano_indices = np.where(error_dev > stddev_threshold)[0]
-    print(len(ano_indices) / len(error_dev))
-    return ano_indices, error_dev, None
+        error_dev /= total
+        # error_dev = conv_error(error_dev, conv)
+        ano_indices = np.where(error_dev > stddev_threshold)[0]
 
+        if display:
+            print("Selected %0.1f%% of errors" % (len(ano_indices) / len(error_dev) * 100))
+        return ano_indices, error_dev, None
 
 ## Vote method
 

@@ -31,29 +31,49 @@ class NBEATS(Timeseries):
 
     def create_service(self, model_name, predict = False):
         sname = self.get_predict_sname() if predict else self.sname
-        parameters_input = {'connector':'csvts','db':False, 'separator':','}
-        parameters_mllib = {'loss':'L1','template':'nbeats', 'template_params':{"stackdef": self.template_params}, 'db':False,'gpuid':self.gpuid,'gpu':True}
+        parameters_input = {
+            'connector':'csvts',
+            'db':False,
+            'separator':',',
+            'ignore': self.ignored_cols,
+            'forecast_timesteps':self.forecast,
+            'backcast_timesteps':self.backcast
+        }
+        parameters_mllib = {
+            'loss':'L1',
+            'template':'nbeats',
+            'template_params':{"stackdef": self.template_params},
+            'db':False,
+            'gpuid':self.gpuid,
+            'gpu':True
+        }
         parameters_output = {'store_config': not predict}
-        model = {'repository':os.path.join(self.models_dir, model_name),'create_repository':True}
+        model = {
+            'repository':os.path.join(self.models_dir, model_name),
+            'create_repository':True
+        }
         try:
             creat = self.dd.put_service(sname,model,'kratos nbeats prediction','torch',parameters_input,parameters_mllib,parameters_output)
-            print(creat)
-        except Exception as e:
-            if e.response.status_code == 500:
-                print('service already exists', e)
-            else:
-                raise
+            self.log_progress(creat)
+        except Exception:
+            raise
 
     def train(self, data):
         parameters_input = {
-            'shuffle':True,
+            'db':False,
             'separator':',',
+            'shuffle':True,
             'scale':True,
             'offset':self.offset,
-            'db':False,
-            'ignore':self.ignored_cols, 'separator':',','forecast_timesteps':self.forecast, 'backcast_timesteps':self.backcast
+            'ignore':self.ignored_cols,
+            'forecast_timesteps':self.forecast,
+            'backcast_timesteps':self.backcast
         }
-        solver_params = {'snapshot':20000, 'solver_type':'RANGER_PLUS', 'test_initialization':False}
+        solver_params = {
+            'snapshot':20000,
+            'solver_type':'RANGER_PLUS',
+            'test_initialization':False
+        }
         solver_params.update(self.solver_params)
 
         parameters_mllib = {
@@ -69,11 +89,18 @@ class NBEATS(Timeseries):
         """
         run predict on nbeats service
         """
-        parameters_input = {'connector':'csvts','separator':',','scale':True,'db':False, 'backcast_timesteps':self.backcast, 'forecast_timesteps':self.forecast}
+        parameters_input = {
+            'connector':'csvts',
+            'separator':',',
+            'scale':True,
+            'db':False,
+            'backcast_timesteps':self.backcast,
+            'forecast_timesteps':self.forecast
+        }
         parameters_mllib = {'net':{'test_batch_size':1}}
         parameters_output = {}
         res = self.dd.post_predict(self.get_predict_sname(),data,parameters_input,parameters_mllib,parameters_output)
-        if res["status"]["code"] == 500:
+        if res["status"]["code"] != 200:
             print(res)
         return res
 
@@ -130,7 +157,7 @@ class NBEATS(Timeseries):
             targets[nline:nline + it_points] = raw_data[nline+self.backcast:nline + self.backcast + it_points,col_labels]
 
             out = self.get_timeserie_results_nbeats([csvheader.getvalue(), data])
-            out = out['body']['predictions']
+            out = self.get_dd_predictions(out)
 
             pred = np.array([out[0]['series'][i]['out'] for i in range(it_points)], dtype=np.double)
             predictions[nline:nline + self.forecast] += pred
@@ -213,7 +240,8 @@ class NBEATS(Timeseries):
             if nline + targ_points <= num_lines:
                 targets[pred_line:pred_line + targ_points] = raw_data[nline:nline + targ_points,col_labels]
 
-            out = self.get_timeserie_results_nbeats([csvheader.getvalue(),csvdata.getvalue()])['body']['predictions']
+            out = self.get_timeserie_results_nbeats([csvheader.getvalue(),csvdata.getvalue()])
+            out = self.get_dd_predictions(out)
 
             pred = np.array([out[0]['series'][i]['out'] for i in range(it_points)], dtype=np.double)
             predictions[pred_line:pred_line + it_points] = pred
