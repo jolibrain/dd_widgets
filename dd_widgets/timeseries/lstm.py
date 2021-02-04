@@ -28,14 +28,32 @@ class LSTM(Timeseries):
 
     def create_service(self, model_name, predict = False):
         sname = self.get_predict_sname() if predict else self.sname
-        parameters_input = {'connector':'csvts','timesteps':self.timesteps,'db':False,'ignore':self.ignored_cols, 'separator':',',
-                            'label':self.target_cols}
-        parameters_mllib = {'loss':'L1','template':'recurrent', 'db':False,'gpuid':self.gpuid,'gpu':True, 'layers': self.layers, 'dropout':0.0, 'regression':True}
+        parameters_input = {
+            'connector':'csvts',
+            'timesteps':self.timesteps,
+            'db':False,
+            'separator':',',
+            'ignore':self.ignored_cols,
+            'label':self.target_cols
+        }
+        parameters_mllib = {
+            'loss':'L1',
+            'template':'recurrent',
+            'db':False,
+            'gpuid':self.gpuid,
+            'gpu':True,
+            'layers': self.layers,
+            'dropout':0.0,
+            'regression':True
+        }
         parameters_output = {'store_config': not predict}
-        model = {'repository':os.path.join(self.models_dir, model_name), 'create_repository': True}
+        model = {
+            'repository':os.path.join(self.models_dir, model_name),
+            'create_repository': True
+        }
         try:
             creat = self.dd.put_service(sname,model,'airbus timeserie prediction','torch',parameters_input,parameters_mllib,parameters_output)
-            print(creat)
+            self.log_progress(creat)
         except Exception as e:
             raise e
 
@@ -46,9 +64,19 @@ class LSTM(Timeseries):
             'scale':True,
             'offset':self.offset,
             'db':False,
-            'ignore':['timestamp'] + self.ignored_cols, 'separator':',','label':self.target_cols
+            'separator':',',
+            'ignore':self.ignored_cols,
+            'label':self.target_cols
         }
-        solver_params = {'test_interval':2000, 'snapshot':2000, "iterations":500000, 'base_lr':0.001, 'solver_type':'RANGER_PLUS', 'clip': True, 'test_initialization':False}
+        solver_params = {
+            'test_interval':2000,
+            'snapshot':2000,
+            "iterations":500000,
+            'base_lr':0.001,
+            'solver_type':'RANGER_PLUS',
+            'clip': True,
+            'test_initialization':False
+        }
         solver_params.update(self.solver_params)
         parameters_mllib = {
             'gpu':True,
@@ -62,11 +90,18 @@ class LSTM(Timeseries):
         self.dd.post_train(self.sname, data, parameters_input, parameters_mllib, parameters_output, jasync=True)
 
     def get_timeserie_results_lstm(self, data, continuation = True):
-        parameters_input = {'connector':'csvts','separator':',','scale':True,'db':False, 'timesteps':1, 'continuation':continuation}
+        parameters_input = {
+            'connector':'csvts',
+            'separator':',',
+            'scale':True,
+            'db':False,
+            'timesteps':1,
+            'continuation':continuation
+        }
         parameters_mllib = {'net':{'test_batch_size':1},'cudnn':True}
         parameters_output = {}
         res = self.dd.post_predict(self.get_predict_sname(),data,parameters_input,parameters_mllib,parameters_output)
-        if res["status"]["code"] == 500:
+        if res["status"]["code"] != 200:
             print(res)
         return res
 
@@ -97,7 +132,8 @@ class LSTM(Timeseries):
             nsteps = nsteps + 1
 
             if nsteps == nsteps_before_predict:
-                out = self.get_timeserie_results_lstm([csvheader.getvalue(),csvdata.getvalue()], cont)['body']['predictions']
+                out = self.get_timeserie_results_lstm([csvheader.getvalue(),csvdata.getvalue()], cont)
+                out = self.get_dd_predictions(out)
                 cont = True
                 predictions.extend([out[0]['series'][i]['out'] for i in range(nsteps_before_predict)])
                 nsteps = 0
@@ -107,7 +143,8 @@ class LSTM(Timeseries):
                 datawriter = csv.writer(csvdata)
 
         if nsteps != 0:
-            out = self.get_timeserie_results_lstm([csvheader.getvalue(),csvdata.getvalue()], cont)['body']['predictions']
+            out = self.get_timeserie_results_lstm([csvheader.getvalue(),csvdata.getvalue()], cont)
+            out = self.get_dd_predictions(out)
             predictions.extend([out[0]['series'][i]['out'] for i in range(len(out[0]['series']))])
 
         return np.asarray(predictions), np.asarray(targets)
@@ -185,7 +222,8 @@ class LSTM(Timeseries):
             nsteps = nsteps + 1
 
             if nsteps == timesteps:
-                out = extract_layer_timeseries(dd,sname, [csvheader.getvalue(),csvdata.getvalue()], extract_layer, cont)['body']['predictions']
+                out = extract_layer_timeseries(dd,sname, [csvheader.getvalue(),csvdata.getvalue()], extract_layer, cont)
+                out = self.get_dd_predictions(out)
                 embeddings.append(out[0]["vals"])
                 # predictions.extend([out[0]['series'][i]['out'] for i in range(nsteps_before_predict)])
                 cont = True
@@ -197,7 +235,9 @@ class LSTM(Timeseries):
                 csvdata = io.StringIO()
                 datawriter = csv.writer(csvdata)
 
-        out = extract_layer_timeseries(dd,sname, [csvheader.getvalue(),csvdata.getvalue()], extract_layer, cont)['body']['predictions']
+        out = extract_layer_timeseries(dd,sname, [csvheader.getvalue(),csvdata.getvalue()], extract_layer, cont)
+        out = self.get_dd_predictions(out)
+
         embeddings.append(out[0]["vals"])
         # predictions.extend([out[0]['series'][i]['out'] for i in range(len(out[0]['series']))])
 
