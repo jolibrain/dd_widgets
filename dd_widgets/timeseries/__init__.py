@@ -96,6 +96,27 @@ def load_data(filename):
         data.append(tsdata)
     return np.asarray(data)
 
+def concat_all_datafiles(errors, datafiles):
+    """
+    Create one error array by juxtaposition of all errors on
+    the train set. This array may be used by the ErrorNormalizationModel
+    to compute the coefficients.
+
+    errors[datafile][model] -> concatened_error[model]
+    """
+    result = {}
+
+    for datafile in datafiles:
+        error = errors[datafile]
+
+        for model in error:
+            if model not in result:
+                result[model] = error[model]
+            else:
+                result[model] = np.concatenate((result[model], error[model]), axis = 0)
+
+    return result
+
 def normalize_error(data):
     eps = 1E-5
     max_data = np.amax(data,axis=0)
@@ -140,6 +161,26 @@ class AnomalyParameters:
 
     def available_methods():
         return ["threshold_norm", "threshold", "peaks", "votes", "gaussian"]
+
+    def fit(self, error):
+        """
+        Fit error model on given error
+        This consists in computing mean and standard deviation for every
+        signal.
+        """
+        err_norm_model = ano.ErrorNormalizationModel()
+        c = self.smooth_factor + 1
+        conv = [1 / c] * c
+
+        col_ids = []
+        for lbl in self.labels:
+            if lbl not in self.ignore:
+                col_ids.append(get_col(self.labels,lbl))
+
+        error = error[:,col_ids]
+        err_norm_model.fit(error, conv, display = True)
+
+        self.err_norm_model = err_norm_model
 
     def compute_anomalies(self, error, display = False):
         """
@@ -420,6 +461,22 @@ class Timeseries:
                 self.preds[datafile][model] = load_data(pred_out_file)
                 self.errors[datafile][model] = load_data(err_out_file)
 
+    def reset_pred_targ_error(self):
+        """
+        Remove all precomputed target / pred / error.
+        """
+        self.preds = {}
+        self.targs = {}
+        self.errors = {}
+
+    def learn_anomalies(self, model, datafiles):
+        """
+        Precompute thresholds for anomaly detection on given files.
+        """
+        # TODO learn all models?
+        # TODO allow datafiles from everywhere
+        error = concat_all_datafiles(self.errors, datafiles)
+        self.anomaly_params.fit(error[model])
 
     # Plot / Widgets
 
@@ -546,7 +603,7 @@ class Timeseries:
         indices = np.arange(self.shift + tstart, self.shift + tend)
 
         nh = 2
-        fig = plt.figure(figsize = (len(self.models) * 6, nh * 4))
+        fig = plt.figure(figsize = (len(self.models) * 9, nh * 6))
         axs = fig.subplots(nh, len(self.models))
 
         # fig.title(title)
@@ -616,6 +673,8 @@ class Timeseries:
             for ax in [ax1, ax2]:
                 if tests:
                     for test_start, test_end in tests:
+                        test_start = min(max(test_start, tstart), tend)
+                        test_end = min(max(test_end, tstart), tend)
                         ax.axvspan(test_start + self.shift, test_end + self.shift, facecolor='green', alpha=0.3)
 
         plt.tight_layout()
