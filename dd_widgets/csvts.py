@@ -120,6 +120,7 @@ class CSVTS(ImageTrainerMixin):
                 "snapshot": self.snapshot_interval.value,
                 "base_lr": self.base_lr.value,
                 "solver_type": self.solver_type.value,
+                "sam" : self.sam.value,
                 "test_initialization": self.test_initialization.value,
             },
         }
@@ -148,6 +149,7 @@ class CSVTS(ImageTrainerMixin):
         layers: List[str] = [],
         csv_separator: str = ",",
         solver_type: Solver = "AMSGRAD",
+        sam : bool = False,
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
