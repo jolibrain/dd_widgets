@@ -261,6 +261,7 @@ class Timeseries:
                 offset=50,
                 gpuid = 0,
                 autoregressive = False,
+                sam = False,
                 batch_size = 50,
                 iter_size = 1,
                 iterations = 500000,
@@ -288,7 +289,8 @@ class Timeseries:
             "iter_size": iter_size,
             "iterations": iterations,
             "base_lr": base_lr,
-            "test_interval": test_interval
+            "test_interval": test_interval,
+            "sam": sam
         }
 
         """

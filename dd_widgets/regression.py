@@ -80,6 +80,7 @@ class Regression(ImageTrainerMixin):
         test_batch_size: int = 16,
         iter_size: int = 1,
         solver_type: Solver = "SGD",
+        sam : bool = False,
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
