@@ -53,7 +53,7 @@ class NBEATS(Timeseries):
             'create_repository':True
         }
         try:
-            creat = self.dd.put_service(sname,model,'kratos nbeats prediction','torch',parameters_input,parameters_mllib,parameters_output)
+            creat = self.dd.put_service(sname,model,'nbeats prediction','torch',parameters_input,parameters_mllib,parameters_output)
             self.log_progress(creat)
         except Exception:
             raise
