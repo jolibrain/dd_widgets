@@ -27,14 +27,16 @@ def notebook_path() -> Path:
     available. The method only works when the security is token-based or if
     there is no password
     """
+    fallback_notebook_path = Path("./")
     try:
         connection_file = Path(ipykernel.get_connection_file()).stem
     except RuntimeError:
-        return Path("./tests.log")
+        return fallback_notebook_path
 
     kernel_id = connection_file.split("-", 1)[1].split(".")[0]
 
     for srv in notebookapp.list_running_servers():
+        fallback_notebook_path = Path(srv["notebook_dir"])
         try:
             # No token and no password, ahem...
             if srv["token"] == "" and not srv["password"]:
@@ -47,7 +49,8 @@ def notebook_path() -> Path:
                     return Path(srv["notebook_dir"]) / sess["notebook"]["path"]
         except Exception:
             pass  # There may be stale entries in the runtime directory
-    return Path(srv["notebook_dir"])
+
+    return fallback_notebook_path
 
 
 def logfile(p: Path) -> Path:
