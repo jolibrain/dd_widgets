@@ -30,7 +30,7 @@ class CSVTS(ImageTrainerMixin):
                 )
                 scales = alt.selection_interval(encodings=["x"], bind="scales")
                 chart = (
-                    alt.Chart(df.melt("time"))
+                    alt.Chart(df.melt("time")) #TODO: should not be hardcoded
                     .mark_line()
                     .encode(x="time", y="value", color=color)
                     .add_selection(selection)
@@ -84,6 +84,7 @@ class CSVTS(ImageTrainerMixin):
             if len(self.gpuid.index) > 1
             else self.gpuid.index[0]
         )
+        dic["timesteps"] = self.timesteps.value
         dic["layers"] = eval(self.layers.value)  #'["L50", "L50", "A3", "L3"]'
         return dic
 
@@ -93,7 +94,7 @@ class CSVTS(ImageTrainerMixin):
             "separator": self.csv_separator.value,
             "db": False,
             "scale": True,
-            "offset": 100,
+            "offset": self.offset.value,
             "timesteps": self.timesteps.value,
         }
 
@@ -108,6 +109,7 @@ class CSVTS(ImageTrainerMixin):
                 else self.gpuid.index[0]
             ),
             "resume": self.resume.value,
+            "timesteps": self.timesteps.value,
             "net": {
                 "batch_size": self.batch_size.value,
                 "test_batch_size": self.test_batch_size.value,
@@ -118,6 +120,7 @@ class CSVTS(ImageTrainerMixin):
                 "snapshot": self.snapshot_interval.value,
                 "base_lr": self.base_lr.value,
                 "solver_type": self.solver_type.value,
+                "sam" : self.sam.value,
                 "test_initialization": self.test_initialization.value,
             },
         }
@@ -146,6 +149,7 @@ class CSVTS(ImageTrainerMixin):
         layers: List[str] = [],
         csv_separator: str = ",",
         solver_type: Solver = "AMSGRAD",
+        sam : bool = False,
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
@@ -160,7 +164,8 @@ class CSVTS(ImageTrainerMixin):
         iterations: int = 10000,
         snapshot_interval: int = 5000,
         test_interval: int = 1000,
-        timesteps: int,
+        timesteps: int = 100,
+        offset: int = 20,
         test_initialization: bool = False,
         batch_size: int = 1000,
         test_batch_size: int = 100,

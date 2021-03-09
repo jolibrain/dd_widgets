@@ -42,6 +42,7 @@ class Text(TextTrainerMixin):
         warmup_iter: int = 0,
         resume: bool = False,
         solver_type: Solver = "SGD",
+        sam : bool = False,
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
