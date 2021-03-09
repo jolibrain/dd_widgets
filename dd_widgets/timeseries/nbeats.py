@@ -16,6 +16,7 @@ class NBEATS(Timeseries):
                 backcast,
                 forecast,
                 template_params = ["g512", "g512", "b5", "h512"],
+                backcast_loss_coeff = 1.0,
                 pred_interval = 20,
                 **kwargs):
 
@@ -23,6 +24,7 @@ class NBEATS(Timeseries):
         self.backcast = backcast
         self.forecast = forecast
         self.template_params = template_params
+        self.backcast_loss_coeff = backcast_loss_coeff
         # During predict, make prediction every X timesteps
         self.pred_interval = pred_interval
 
@@ -42,7 +44,7 @@ class NBEATS(Timeseries):
         parameters_mllib = {
             'loss':'L1',
             'template':'nbeats',
-            'template_params':{"stackdef": self.template_params},
+            'template_params':{"stackdef": self.template_params, "backcast_loss_coeff": self.backcast_loss_coeff},
             'db':False,
             'gpuid':self.gpuid,
             'gpu':True
