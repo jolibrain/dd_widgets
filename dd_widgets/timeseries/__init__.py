@@ -138,25 +138,42 @@ def get_signal_mean_error(pred, targ, feat):
     return mean_error
 
 
+class PlotParameters:
+    def __init__(self,
+                 width = 9,
+                 height = 6,
+                 ylim = None,
+                 display_targ = True,
+                 display_pred = True):
+
+        self.width = width
+        self.height = height
+        self.ylim = ylim
+
+        # TODO implement in plot_predictions
+        self.display_targ = display_targ
+        self.display_pred = display_pred
+
 class AnomalyParameters:
     def __init__(self,
                 method = "threshold_norm",
                 smooth_factor = 20,
                 threshold = 3,
                 n_anomalies = 40,
+                peaks_width = 10,
                 ignore = []):
 
         self.method = method
         self.smooth_factor = smooth_factor
         self.labels = []
         self.ignore = ignore
-
-        # Gauss parameters
         self.threshold = threshold
-
-        # Votes & peaks parameters
         # Total number of anomalies detected
         self.n_anomalies = n_anomalies
+
+        # Peaks parameters
+        self.peak_width = 10
+
         self.err_norm_model = None
 
     def available_methods():
@@ -224,7 +241,7 @@ class AnomalyParameters:
         elif self.method == "peaks":
             # ano_signal = error_peaks(error_norm, conv=conv)
             # anomalies = anomaly_dates(ano_signal, 20)
-            anomalies, ano_signal, ano_peaks = ano.anomaly_dates_peaks(error_norm, self.n_anomalies,conv=conv)
+            anomalies, ano_signal, ano_peaks = ano.anomaly_dates_peaks(error_norm, self.n_anomalies,conv=conv, peak_width = self.peak_width)
         elif self.method == "votes":
             ano_signal = ano.error_vote(error_norm, self.n_anomalies, conv=conv)
             anomalies = ano.anomaly_dates_votes(ano_signal, self.n_anomalies)
@@ -309,6 +326,7 @@ class Timeseries:
                 base_lr=0.001,
                 test_interval = 5000,
                 anomaly_params = AnomalyParameters(),
+                plot_params = PlotParameters(),
                 display_progress = True):
 
         self.sname = sname
@@ -345,6 +363,8 @@ class Timeseries:
         # error based anomaly detection
         self.anomaly_params = anomaly_params
         self.anomaly_params.labels = self.target_cols
+
+        self.plot_params = plot_params
 
         # dict {dataset: target}
         self.targs = {}
@@ -603,7 +623,7 @@ class Timeseries:
         indices = np.arange(self.shift + tstart, self.shift + tend)
 
         nh = 2
-        fig = plt.figure(figsize = (len(self.models) * 9, nh * 6))
+        fig = plt.figure(figsize = (len(self.models) * self.plot_params.width, nh * self.plot_params.height))
         axs = fig.subplots(nh, len(self.models))
 
         # fig.title(title)
@@ -677,6 +697,10 @@ class Timeseries:
                         test_end = min(max(test_end, tstart), tend)
                         ax.axvspan(test_start + self.shift, test_end + self.shift, facecolor='green', alpha=0.3)
 
+            if self.plot_params.ylim:
+                ax1.set_ylim(self.plot_params.ylim)
+                ax2.set_ylim((0, self.plot_params.ylim[1] - self.plot_params.ylim[0]))
+
         plt.tight_layout()
 
         if save:
@@ -704,14 +728,6 @@ class Timeseries:
             value=-1,
             description='Duration:'
         )
-        # avg_alpha_text = widgets.FloatText(
-        #     value=1,
-        #     description='Exponential average coef:'
-        # )
-        # anomaly_dropdown = widgets.Dropdown(
-        #     options=["Peaks", "Votes", "Gaussian"],
-        #     description="Anomaly method:"
-        # )
         run_button = widgets.Button(
             description='Update',
             tooltip='Update'

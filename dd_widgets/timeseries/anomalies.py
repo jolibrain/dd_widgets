@@ -173,11 +173,11 @@ def anomaly_dates_votes(votes,nanomalies):
 
 ## Peaks method
 
-def error_vote_peaks(error, conv = None):
+def error_vote_peaks(error, conv = None, peak_width = 10):
     # TODO vote, but select peaks instead of just the biggest error values
     peaks = []
     for signal in range(error.shape[1]):
-        peaks.append(scipy.signal.find_peaks(error[:,signal], width=10))
+        peaks.append(scipy.signal.find_peaks(error[:,signal], width=peak_width))
 
     err_peaks = np.zeros_like(error)
     for signal in range(len(peaks)):
@@ -187,11 +187,11 @@ def error_vote_peaks(error, conv = None):
     err_peaks = sum_conv_error(err_peaks, conv)
     return err_peaks #, peaks
 
-def anomaly_dates_peaks(error, nanomalies, conv = None):
+def anomaly_dates_peaks(error, nanomalies, conv = None, peak_width = 10):
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.find_peaks.html
     # TODO add coefficient on each signal
     err_sum = sum_conv_error(error, conv)
-    peaks, values = scipy.signal.find_peaks(err_sum, width=10)
+    peaks, values = scipy.signal.find_peaks(err_sum, width=peak_width)
     values = values["prominences"]
     ano_indices = np.argsort(values)[-nanomalies:]
     return peaks[ano_indices], err_sum, peaks

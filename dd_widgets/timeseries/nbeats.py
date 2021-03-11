@@ -17,7 +17,7 @@ class NBEATS(Timeseries):
                 forecast,
                 template_params = ["g512", "g512", "b5", "h512"],
                 backcast_loss_coeff = 1.0,
-                pred_interval = 20,
+                pred_interval = 1,
                 **kwargs):
 
         super().__init__(**kwargs)
