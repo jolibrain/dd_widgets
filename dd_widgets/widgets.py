@@ -183,6 +183,36 @@ class JSONBuilder:
             ]
         )
 
+    def _predict_parameters_input(self) -> JSONType:
+        raise NotImplementedError
+
+    def _predict_parameters_mllib(self) -> JSONType:
+        raise NotImplementedError
+
+    def _predict_parameters_output(self) -> JSONType:
+        raise NotImplementedError
+
+    def _predict_service_body(self) -> JSONType:
+        return OrderedDict(
+            [
+                ("service", self.sname),
+                (
+                    "parameters",
+                    {
+                        "input": {
+                            **self._predict_parameters_input(),
+                        },
+                        "mllib": {
+                            **self._predict_parameters_mllib(),
+                        },
+                        "output": {
+                            **self._predict_parameters_output(),
+                        },
+                    },
+                ),
+            ]
+        )
+
 
 class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
 
