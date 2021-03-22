@@ -11,106 +11,150 @@ from . import *
 class LSTM(Timeseries):
 
     def __init__(self,
-                pred_distance,
-                layers = ["L256", "L256"],
-                timesteps = 400,
+                sname: str,
+                *,  # unnamed parameters are forbidden
+                path: str = "",
+                description: str = "Recurrent model",
+                model_repo: Path = None,
+                mllib: str = "torch",
+                training_repo: Path = None,
+                testing_repo: Path = None,
+                host: str = "localhost",
+                port: int = 1234,
+                gpuid: GPUIndex = 0,
+                nclasses: int = -1,
+                label_columns: List[str] = [],
+                ignore_columns: List[str] = [],
+                layers : List[str] = ["L256", "L256"],
+                csv_separator: str = ",",
+                solver_type: Solver = "RANGER_PLUS",
+                sam : bool = False,
+                lookahead : bool = True,
+                lookahead_steps : int = 6,
+                lookahead_alpha : float = 0.5,
+                rectified : bool = True,
+                decoupled_wd_periods : int = 4,
+                decoupled_wd_mult : float = 2.0,
+                lr_dropout : float = 1.0,
+                resume: bool = False,
+                base_lr: float = 1e-3,
+                warmup_lr: float = 1e-5,
+                warmup_iter: int = 0,
+                iterations: int = 500000,
+                snapshot_interval: int = 5000,
+                test_interval: int = 5000,
+                timesteps: int = 400,
+                offset: int = 1,
+                test_initialization: bool = False,
+                batch_size: int = 50,
+                iter_size: int = 1,
+                test_batch_size: int = 100,
+                loss: str = "L1",
+                ### Predict parameters
+                # distance between prediction and target
+                pred_distance : int = 100,
                 **kwargs):
 
-        super().__init__(**kwargs)
-        self.layers = layers
-        # distance of prediction in timesteps
+        super().__init__(sname, local_vars=locals(), **kwargs)
+        # distance of prediction in timesteps (used only for display)
         self.pred_distance = pred_distance
-        # length of sequences during learning
-        self.timesteps = timesteps
 
         # set shift (see Timeseries)
         self.shift = pred_distance
 
-    def create_service(self, model_name, predict = False):
-        sname = self.get_predict_sname() if predict else self.sname
-        parameters_input = {
-            'connector':'csvts',
-            'timesteps':self.timesteps,
-            'db':False,
-            'separator':',',
-            'ignore':self.ignored_cols,
-            'label':self.target_cols
+    def _create_parameters_input(self):
+        return {
+            "connector": "csvts",
+            "db": False,
+            "label": eval(self.label_columns.value),
+            "ignore": eval(self.ignore_columns.value),
+            "timesteps": self.timesteps.value,
         }
-        parameters_mllib = {
-            'loss':'L1',
-            'template':'recurrent',
-            'db':False,
-            'gpuid':self.gpuid,
-            'gpu':True,
-            'layers': self.layers,
-            'dropout':0.0,
-            'regression':True
-        }
-        parameters_output = {'store_config': not predict}
-        model = {
-            'repository':os.path.join(self.models_dir, model_name),
-            'create_repository': True
-        }
-        try:
-            creat = self.dd.put_service(sname,model,'airbus timeserie prediction','torch',parameters_input,parameters_mllib,parameters_output)
-            self.log_progress(creat)
-        except Exception as e:
-            raise e
 
-    def train(self, data):
-        parameters_input = {
-            'shuffle':True,
-            'separator':',',
-            'scale':True,
-            'offset':self.offset,
-            'db':False,
-            'separator':',',
-            'ignore':self.ignored_cols,
-            'label':self.target_cols
-        }
-        solver_params = {
-            'test_interval':2000,
-            'snapshot':2000,
-            "iterations":500000,
-            'base_lr':0.001,
-            'solver_type':'RANGER_PLUS',
-            'clip': True,
-            'test_initialization':False
-        }
-        solver_params.update(self.solver_params)
-        parameters_mllib = {
-            'gpu':True,
-            'gpuid':self.gpuid,
-            'net': {'batch_size':self.batch_size,'test_batch_size':min(self.batch_size, 30) },
-            'solver': solver_params
-        }
-        parameters_output = {
-            'measure':['L1','L2']
-        }
-        self.dd.post_train(self.sname, data, parameters_input, parameters_mllib, parameters_output, jasync=True)
+    def _create_parameters_mllib(self):
+        dic = dict(
+            template="recurrent",
+            regression=True,
+            db=False,
+            dropout=0.0,
+            loss=self.loss.value,
+        )
+        dic["gpu"] = True
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
+        dic["gpuid"] = (
+            list(self.gpuid.index)
+            if len(self.gpuid.index) > 1
+            else self.gpuid.index[0]
+        )
+        dic["timesteps"] = self.timesteps.value
+        dic["layers"] = eval(self.layers.value)  #'["L50", "L50", "A3", "L3"]'
+        return dic
 
-    def get_timeserie_results_lstm(self, data, continuation = True):
-        parameters_input = {
+    def _train_parameters_input(self):
+        return {
+            "shuffle": True,
+            "separator": self.csv_separator.value,
+            "db": False,
+            "scale": True,
+            "offset": self.offset.value,
+            "timesteps": self.timesteps.value,
+        }
+
+    def _train_parameters_mllib(self):
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
+        dic = {
+            "gpu": True,
+            "gpuid": (
+                list(self.gpuid.index)
+                if len(self.gpuid.index) > 1
+                else self.gpuid.index[0]
+            ),
+            "resume": self.resume.value,
+            "timesteps": self.timesteps.value,
+            "net": {
+                "batch_size": self.batch_size.value,
+                "test_batch_size": self.test_batch_size.value,
+            },
+            "solver": {
+                "iterations": self.iterations.value,
+                "test_interval": self.test_interval.value,
+                "snapshot": self.snapshot_interval.value,
+                "base_lr": self.base_lr.value,
+                "solver_type": self.solver_type.value,
+                "sam" : self.sam.value,
+                "test_initialization": self.test_initialization.value,
+            },
+        }
+
+        return dic
+
+    def _train_parameters_output(self):
+        return {"measure": ["L1"]}
+
+    def _predict_parameters_input(self):
+        return {
             'connector':'csvts',
-            'separator':',',
+            'separator':self.csv_separator.value,
             'scale':True,
             'db':False,
-            'timesteps':1,
-            'continuation':continuation
+            'continuation': self.continuation
         }
-        parameters_mllib = {'net':{'test_batch_size':1},'cudnn':True}
-        parameters_output = {}
-        res = self.dd.post_predict(self.get_predict_sname(),data,parameters_input,parameters_mllib,parameters_output)
-        if res["status"]["code"] != 200:
-            print(res)
-        return res
+
+    def _predict_parameters_mllib(self):
+        return {
+            'net':{'test_batch_size':1},
+            'cudnn':True
+        }
+
+    def _predict_parameters_output(self):
+        return {}
 
     def get_pred_targets_lstm(self, datafile, nsteps_before_predict, npredictions):
         csvfile = open(datafile)
         csv_reader = csv.reader(csvfile, delimiter=',')
         header = next(csv_reader)
         col_labels = []
-        for l in self.target_cols:
+        for l in eval(self.label_columns.value):
             col_labels.append(get_col(header,l))
 
         nsteps = 0
@@ -122,7 +166,7 @@ class LSTM(Timeseries):
         headerwriter.writerow(header)
         predictions = []
         targets = []
-        cont = False
+        self.continuation = False
         npr = 0
 
         for data in csv_reader:
@@ -132,9 +176,9 @@ class LSTM(Timeseries):
             nsteps = nsteps + 1
 
             if nsteps == nsteps_before_predict:
-                out = self.get_timeserie_results_lstm([csvheader.getvalue(),csvdata.getvalue()], cont)
+                out = self.predict([csvheader.getvalue(),csvdata.getvalue()])
                 out = self.get_dd_predictions(out)
-                cont = True
+                self.continuation = True
                 predictions.extend([out[0]['series'][i]['out'] for i in range(nsteps_before_predict)])
                 nsteps = 0
                 if npr >= npredictions:
@@ -143,44 +187,17 @@ class LSTM(Timeseries):
                 datawriter = csv.writer(csvdata)
 
         if nsteps != 0:
-            out = self.get_timeserie_results_lstm([csvheader.getvalue(),csvdata.getvalue()], cont)
+            out = self.predict([csvheader.getvalue(),csvdata.getvalue()])
             out = self.get_dd_predictions(out)
             predictions.extend([out[0]['series'][i]['out'] for i in range(len(out[0]['series']))])
 
         return np.asarray(predictions), np.asarray(targets)
 
-    # TODO Merge common parts with nbeats into timeseries?
-    def predict_all(self, nsteps_before_predict = 10000, override = False):
-        if not override:
-            self.load_targets()
-            self.load_preds_errors()
+    def predict_file(self, datapath, nsteps_before_predict = 10000):
+        pred, targ = self.get_pred_targets_lstm(datapath, nsteps_before_predict, float("inf"))
+        return pred, targ
 
-        predicted_models = []
-        self.delete_service(predict = True)
 
-        for model in self.progress_bar(self.models):
-            self.create_service(model, predict = True)
-
-            for datafile in self.progress_bar(self.datafiles):
-                if datafile not in self.preds:
-                    self.preds[datafile] = {}
-                    self.errors[datafile] = {}
-
-                if model in self.preds[datafile] and not override:
-                    self.log_progress("skipping predict for %s with model %s: already exist" % (datafile, model))
-                    continue
-
-                datapath = os.path.join(self.datadir, datafile)
-                pred, targ = self.get_pred_targets_lstm(datapath, nsteps_before_predict, float("inf"))
-                self.preds[datafile][model] = pred
-                self.errors[datafile][model] = pred - targ
-                self.targs[datafile] = targ
-
-            predicted_models.append(model)
-            self.delete_service(predict = True)
-
-        self.dump_model_preds(predicted_models)
-        self.log_job_done()
 
     ## Autoencoder part (TODO or remove)
 

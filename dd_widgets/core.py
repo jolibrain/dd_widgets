@@ -143,7 +143,7 @@ class TalkWithDD:
     def dry_run(self, *_) -> JSONType:
         self._create()
         return self.dry_train()
-    
+
     def resume(self, *_) -> JSONType:
         self._create()
         return self.train(resume=True)
@@ -182,6 +182,36 @@ class TalkWithDD:
 
         return json_dict
 
+    def predict(self, data, *_) -> JSONType:
+        body = self._predict_service_body()
+        host = self.host.value
+        port = self.port.value
+
+        body["data"] = data
+
+        logging.info(
+            "Send predict request: {body}".format(
+                body=json.dumps(body, indent=2)
+            )
+        )
+        c = requests.post(
+            "http://{host}:{port}/{path}/predict".format(
+                host=host, port=port, path=self.path.value
+            ),
+            json.dumps(body),
+        )
+        logging.info(
+            "Reply from predict service '{sname}': {json}".format(
+                sname=self.sname, json=json.dumps(c.json(), indent=2)
+            )
+        )
+
+        json_dict = c.json()
+        if "head" in json_dict:
+            self.status = json_dict["head"]
+
+        return json_dict
+
     def dry_train(self, *_) -> JSONType:
         body = self._train_service_body()
         host = self.host.value
@@ -189,7 +219,7 @@ class TalkWithDD:
 
         print('host=',host,' / port=',port)
         print('body=',body)
-        
+
         return {}
 
     def delete(self, *_) -> JSONType:
