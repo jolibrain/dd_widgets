@@ -182,29 +182,32 @@ class TalkWithDD:
 
         return json_dict
 
-    def predict(self, data, *_) -> JSONType:
+    def predict(self, data, enable_logging=True, *_) -> JSONType:
         body = self._predict_service_body()
         host = self.host.value
         port = self.port.value
 
         body["data"] = data
 
-        logging.info(
-            "Send predict request: {body}".format(
-                body=json.dumps(body, indent=2)
+        if enable_logging:
+            logging.info(
+                "Send predict request: {body}".format(
+                    body=json.dumps(body, indent=2)
+                )
             )
-        )
+
         c = requests.post(
             "http://{host}:{port}/{path}/predict".format(
                 host=host, port=port, path=self.path.value
             ),
             json.dumps(body),
         )
-        logging.info(
-            "Reply from predict service '{sname}': {json}".format(
-                sname=self.sname, json=json.dumps(c.json(), indent=2)
+        if enable_logging:
+            logging.info(
+                "Reply from predict service '{sname}': {json}".format(
+                    sname=self.sname, json=json.dumps(c.json(), indent=2)
+                )
             )
-        )
 
         json_dict = c.json()
         if "head" in json_dict:

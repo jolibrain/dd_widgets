@@ -85,7 +85,6 @@ class NBEATS(Timeseries):
     def _create_parameters_mllib(self):
         dic = dict(
             template="nbeats",
-            regression=True,
             db=False,
             dropout=0.0,
             loss=self.loss.value,
@@ -209,7 +208,7 @@ class NBEATS(Timeseries):
             # output => forecast
             targets[nline:nline + it_points] = raw_data[nline+backcast:nline + backcast + it_points,col_labels]
 
-            out = self.predict([csvheader.getvalue(), data])
+            out = self.predict([csvheader.getvalue(), data], enable_logging = False)
             out = self.get_dd_predictions(out)
 
             pred = np.array([out[0]['series'][i]['out'] for i in range(it_points)], dtype=np.double)

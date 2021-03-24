@@ -74,7 +74,6 @@ class LSTM(Timeseries):
     def _create_parameters_mllib(self):
         dic = dict(
             template="recurrent",
-            regression=True,
             db=False,
             dropout=0.0,
             loss=self.loss.value,
@@ -176,7 +175,7 @@ class LSTM(Timeseries):
             nsteps = nsteps + 1
 
             if nsteps == nsteps_before_predict:
-                out = self.predict([csvheader.getvalue(),csvdata.getvalue()])
+                out = self.predict([csvheader.getvalue(),csvdata.getvalue()], enable_logging = False)
                 out = self.get_dd_predictions(out)
                 self.continuation = True
                 predictions.extend([out[0]['series'][i]['out'] for i in range(nsteps_before_predict)])
