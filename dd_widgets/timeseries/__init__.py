@@ -306,8 +306,7 @@ class Timeseries(ImageTrainerMixin):
     """
     def __init__(self,
                 sname: str,
-                local_vars : Dict[str, Any] = {},
-                **kwargs):
+                local_vars : Dict[str, Any] = {}):
 
         local_vars.update(locals())
         super().__init__(sname, local_vars)
@@ -467,8 +466,8 @@ class TimeseriesPlot:
                     self.preds[datafile] = {}
                     self.errors[datafile] = {}
 
-                if model in self.preds[datafile] and not override:
-                    self.logger_params.log_progress("skipping predict for %s with model %s: already exist" % (datafile, model))
+                if model.sname in self.preds[datafile] and not override:
+                    self.logger_params.log_progress("skipping predict for %s with model %s: already exist" % (datafile, model.sname))
                     continue
 
                 datapath = os.path.join(self.datadir, datafile)
@@ -543,7 +542,7 @@ class TimeseriesPlot:
             model_out_dir = os.path.join(self.output_dir, model.sname)
 
             if not os.path.exists(model_out_dir):
-                self.logger_params.log_progress("cannot load predictions for %s: model directory not found" % model.sname)
+                self.logger_params.log_progress("cannot load predictions for %s: model directory not found" % model_out_dir)
                 continue
 
             for datafile in self.logger_params.progress_bar(self.datafiles):
