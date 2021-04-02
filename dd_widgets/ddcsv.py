@@ -62,6 +62,7 @@ class CSV(TextTrainerMixin):
         shuffle: bool = True,
         solver_type: Solver = "AMSGRAD",
         sam : bool = False,
+        swa : bool = False,
         lookahead : bool = False,
         lookahead_steps : int = 6,
         lookahead_alpha : float = 0.5,
