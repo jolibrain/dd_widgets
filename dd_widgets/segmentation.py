@@ -51,6 +51,7 @@ class Segmentation(ImageTrainerMixin):
         finetune: bool = False,
         resume: bool = False,
         bw: bool = False,
+        histogram_equalization: bool = False,
         crop_size: int = -1,
         batch_size: int = 32,
         test_batch_size: int = 16,
