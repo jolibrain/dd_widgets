@@ -15,6 +15,9 @@ class Solver(Enum):
     ADAMW = "ADAMW"
     SGDW = "SGDW"
     AMSGRADW ="AMSGRADW"
+    RANGER = "RANGER"
+    RANGER_PLUS = "RANGER_PLUS"
+    MADGRAD = "MADGRAD"
 
 class Engine(Enum):
     CAFFE = "CAFFE"

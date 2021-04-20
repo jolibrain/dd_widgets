@@ -6,6 +6,7 @@ import re
 import time
 import numpy as np
 import tqdm
+from typing import List
 from tqdm import notebook
 
 from . import *
@@ -13,101 +14,150 @@ from . import *
 class NBEATS(Timeseries):
 
     def __init__(self,
-                backcast,
-                forecast,
-                template_params = ["g512", "g512", "b5", "h512"],
-                backcast_loss_coeff = 1.0,
-                pred_interval = 20,
+                sname: str,
+                *,  # unnamed parameters are forbidden
+                path: str = "",
+                description: str = "NBEATS model",
+                model_repo: Path = None,
+                mllib: str = "torch",
+                training_repo: Path = None,
+                testing_repo: Path = None,
+                host: str = "localhost",
+                port: int = 1234,
+                gpuid: GPUIndex = 0,
+                nclasses: int = -1,
+                label_columns: List[str] = [],
+                ignore_columns: List[str] = [],
+                csv_separator: str = ",",
+                solver_type: Solver = "RANGER_PLUS",
+                sam : bool = False,
+                lookahead : bool = True,
+                lookahead_steps : int = 6,
+                lookahead_alpha : float = 0.5,
+                rectified : bool = True,
+                decoupled_wd_periods : int = 4,
+                decoupled_wd_mult : float = 2.0,
+                lr_dropout : float = 1.0,
+                resume: bool = False,
+                base_lr: float = 1e-3,
+                warmup_lr: float = 1e-5,
+                warmup_iter: int = 0,
+                iterations: int = 500000,
+                snapshot_interval: int = 5000,
+                test_interval: int = 5000,
+                offset: int = 1,
+                test_initialization: bool = False,
+                batch_size: int = 50,
+                iter_size: int = 1,
+                test_batch_size: int = 100,
+                loss: str = "L1",
+                backcast_timesteps : int = 100,
+                forecast_timesteps : int = 100,
+                template_params : Dict[str, Any] = {
+                    "stackdef" : ["g512", "g512", "b5", "h512"],
+                    "backcast_loss_coeff" : 1.0,
+                },
+                ### Predict parameters
+                # predict every x timesteps
+                pred_interval : int = 1,
+                # predict from past output
+                autoregressive : bool = False,
                 **kwargs):
 
-        super().__init__(**kwargs)
-        self.backcast = backcast
-        self.forecast = forecast
-        self.template_params = template_params
-        self.backcast_loss_coeff = backcast_loss_coeff
+        super().__init__(sname, local_vars=locals(), **kwargs)
+
         # During predict, make prediction every X timesteps
         self.pred_interval = pred_interval
 
         # set shift (see Timeseries)
-        self.shift = backcast
+        self.shift = backcast_timesteps
 
-    def create_service(self, model_name, predict = False):
-        sname = self.get_predict_sname() if predict else self.sname
-        parameters_input = {
+    def _create_parameters_input(self):
+        return {
             'connector':'csvts',
             'db':False,
-            'separator':',',
-            'ignore': self.ignored_cols,
-            'forecast_timesteps':self.forecast,
-            'backcast_timesteps':self.backcast
+            'separator':self.csv_separator.value,
+            'forecast_timesteps':self.forecast_timesteps.value,
+            'backcast_timesteps':self.backcast_timesteps.value,
+            "ignore": eval(self.ignore_columns.value),
         }
-        parameters_mllib = {
-            'loss':'L1',
-            'template':'nbeats',
-            'template_params':{"stackdef": self.template_params, "backcast_loss_coeff": self.backcast_loss_coeff},
-            'db':False,
-            'gpuid':self.gpuid,
-            'gpu':True
-        }
-        parameters_output = {'store_config': not predict}
-        model = {
-            'repository':os.path.join(self.models_dir, model_name),
-            'create_repository':True
-        }
-        try:
-            creat = self.dd.put_service(sname,model,'nbeats prediction','torch',parameters_input,parameters_mllib,parameters_output)
-            self.log_progress(creat)
-        except Exception:
-            raise
 
-    def train(self, data):
-        parameters_input = {
-            'db':False,
-            'separator':',',
-            'shuffle':True,
-            'scale':True,
-            'offset':self.offset,
-            'ignore':self.ignored_cols,
-            'forecast_timesteps':self.forecast,
-            'backcast_timesteps':self.backcast
-        }
-        solver_params = {
-            'snapshot':20000,
-            'solver_type':'RANGER_PLUS',
-            'test_initialization':False
-        }
-        solver_params.update(self.solver_params)
+    def _create_parameters_mllib(self):
+        dic = dict(
+            template="nbeats",
+            db=False,
+            dropout=0.0,
+            loss=self.loss.value,
+        )
+        dic["gpu"] = True
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
+        dic["gpuid"] = (
+            list(self.gpuid.index)
+            if len(self.gpuid.index) > 1
+            else self.gpuid.index[0]
+        )
+        dic["template_params"] = eval(self.template_params.value)
+        return dic
 
-        parameters_mllib = {
-            'net': {'batch_size':self.batch_size,'test_batch_size':min(self.batch_size, 10)},
-            'solver': solver_params
+    def _train_parameters_input(self):
+        return {
+            "shuffle": True,
+            "separator": self.csv_separator.value,
+            "db": False,
+            "scale": True,
+            "offset": self.offset.value,
         }
-        parameters_output = {
-            'measure':['L1']
-        }
-        train_response = self.dd.post_train(self.sname, data, parameters_input, parameters_mllib, parameters_output, jasync=True)
 
-    def get_timeserie_results_nbeats(self, data):
-        """
-        run predict on nbeats service
-        """
-        parameters_input = {
+    def _train_parameters_mllib(self):
+        assert len(self.gpuid.index) > 0, "Set a GPU index"
+        dic = {
+            "gpu": True,
+            "gpuid": (
+                list(self.gpuid.index)
+                if len(self.gpuid.index) > 1
+                else self.gpuid.index[0]
+            ),
+            "resume": self.resume.value,
+            "net": {
+                "batch_size": self.batch_size.value,
+                "test_batch_size": self.test_batch_size.value,
+            },
+            "solver": {
+                "iterations": self.iterations.value,
+                "test_interval": self.test_interval.value,
+                "snapshot": self.snapshot_interval.value,
+                "base_lr": self.base_lr.value,
+                "solver_type": self.solver_type.value,
+                "sam" : self.sam.value,
+                "test_initialization": self.test_initialization.value,
+            },
+        }
+
+        return dic
+
+    def _train_parameters_output(self):
+        return {"measure": ["L1"]}
+
+    def _predict_parameters_input(self):
+        return {
             'connector':'csvts',
-            'separator':',',
+            'separator':self.csv_separator.value,
             'scale':True,
             'db':False,
-            'backcast_timesteps':self.backcast,
-            'forecast_timesteps':self.forecast
+            'forecast_timesteps':self.forecast_timesteps.value,
+            'backcast_timesteps':self.backcast_timesteps.value,
         }
-        parameters_mllib = {'net':{'test_batch_size':1}}
-        parameters_output = {}
-        res = self.dd.post_predict(self.get_predict_sname(),data,parameters_input,parameters_mllib,parameters_output)
-        if res["status"]["code"] != 200:
-            print(res)
-        return res
+
+    def _predict_parameters_mllib(self):
+        return {'net':{'test_batch_size':1}}
+
+    def _predict_parameters_output(self):
+        return {}
 
     def get_preds_targets_nbeats(self, datafile):
-        timesteps = self.backcast + self.forecast
+        backcast = self.backcast_timesteps.value
+        forecast = self.forecast_timesteps.value
+        timesteps = backcast + forecast
 
         with open(datafile) as linefile:
             raw_lines = linefile.readlines()[1:]
@@ -124,10 +174,10 @@ class NBEATS(Timeseries):
 
         col_labels = []
         for l in header:
-            if l not in self.ignored_cols:
+            if l not in eval(self.ignore_columns.value):
                 col_labels.append(get_col(header,l))
 
-        npoints = num_lines-self.backcast
+        npoints = num_lines-backcast
         nlabels = len(col_labels)
 
         csvheader=io.StringIO()
@@ -141,29 +191,29 @@ class NBEATS(Timeseries):
         npreds =  np.full(npoints,0,dtype=np.double)
         targets = np.full((npoints,nlabels),0, dtype=np.double)
 
-        for nline in self.progress_bar(range(0,num_lines-timesteps + self.pred_interval, self.pred_interval)): # sliding window
+        for nline in self.logger_params.progress_bar(range(0,num_lines-timesteps + self.pred_interval, self.pred_interval)): # sliding window
             # take last iteration into account
-            it_points = min(self.forecast, num_lines - self.backcast - nline)
+            it_points = min(forecast, num_lines - backcast - nline)
 
             if it_points <= 0:
                 continue
             # input
             # csvdata = io.StringIO()
             # datawriter = csv.writer(csvdata)
-            # for j in range(0,self.backcast):
+            # for j in range(0,backcast):
             #    datapoint = raw_data[nline+j]
             #    datawriter.writerow(datapoint)
-            data = "".join(raw_lines[nline:nline + self.backcast])
+            data = "".join(raw_lines[nline:nline + backcast])
 
             # output => forecast
-            targets[nline:nline + it_points] = raw_data[nline+self.backcast:nline + self.backcast + it_points,col_labels]
+            targets[nline:nline + it_points] = raw_data[nline+backcast:nline + backcast + it_points,col_labels]
 
-            out = self.get_timeserie_results_nbeats([csvheader.getvalue(), data])
+            out = self.predict([csvheader.getvalue(), data], enable_logging = False)
             out = self.get_dd_predictions(out)
 
             pred = np.array([out[0]['series'][i]['out'] for i in range(it_points)], dtype=np.double)
-            predictions[nline:nline + self.forecast] += pred
-            npreds[nline:nline+self.forecast] += 1
+            predictions[nline:nline + forecast] += pred
+            npreds[nline:nline+forecast] += 1
 
             predictions[nline:nline + it_points] += pred
             npreds[nline:nline+it_points] += 1
@@ -180,21 +230,22 @@ class NBEATS(Timeseries):
 
         return predictions, predictions_list, npreds, targets
 
-
     def get_nbeats_autoregression(self, datafile, start, stop):
         """
         get_preds_targets but with autoregression
         start = timestep where we start predicting
         stop = timestep where we stop predicting
         """
-        timesteps = self.backcast + self.forecast
+        backcast = self.backcast_timesteps.value
+        forecast = self.forecast_timesteps.value
+        timesteps = backcast + forecast
 
         with open(datafile) as linefile:
             raw_lines = linefile.readlines()[1:]
             num_lines = len(raw_lines)
 
-        if start < self.backcast:
-            raise ValueError("start %d < self.backcast %d" % (start, self.backcast))
+        if start < backcast:
+            raise ValueError("start %d < backcast %d" % (start, backcast))
 
         if stop < 0:
             stop = num_lines
@@ -210,11 +261,11 @@ class NBEATS(Timeseries):
 
         col_labels = []
         for l in header:
-            if l not in self.ignored_cols:
+            if l not in eval(self.ignore_columns.value):
                 col_labels.append(get_col(header,l))
 
         npoints = stop - start
-        ntarg = min(npoints, num_lines - self.backcast)
+        ntarg = min(npoints, num_lines - backcast)
         nlabels = len(col_labels)
 
         csvheader=io.StringIO()
@@ -224,77 +275,43 @@ class NBEATS(Timeseries):
         predictions = np.full((npoints,nlabels),0, dtype=np.double)
         targets = np.full((ntarg,nlabels),0, dtype=np.double)
 
-        prev = raw_data[start-self.backcast:start,:]
+        prev = raw_data[start-backcast:start,:]
 
-        for nline in self.progress_bar(range(start, stop, self.forecast)):
-            it_points = min(self.forecast, stop - nline)
+        for nline in self.logger_params.progress_bar(range(start, stop, forecast)):
+            it_points = min(forecast, stop - nline)
             pred_line = nline - start
 
             # input
             csvdata = io.StringIO()
             datawriter = csv.writer(csvdata)
-            for j in range(0,self.backcast):
-                datapoint = prev[- self.backcast + j]
+            for j in range(0,backcast):
+                datapoint = prev[- backcast + j]
                 datawriter.writerow(datapoint)
 
             # output => forecast
-            targ_points = min(self.forecast, num_lines - nline)
+            targ_points = min(forecast, num_lines - nline)
             if nline + targ_points <= num_lines:
                 targets[pred_line:pred_line + targ_points] = raw_data[nline:nline + targ_points,col_labels]
 
-            out = self.get_timeserie_results_nbeats([csvheader.getvalue(),csvdata.getvalue()])
+            out = self.predict([csvheader.getvalue(),csvdata.getvalue()])
             out = self.get_dd_predictions(out)
 
             pred = np.array([out[0]['series'][i]['out'] for i in range(it_points)], dtype=np.double)
             predictions[pred_line:pred_line + it_points] = pred
 
             # Update data signal with prediction (autoregressive)
-            if it_points == self.forecast: # no need to update for the last iteration
+            if it_points == forecast: # no need to update for the last iteration
                 prev = np.concatenate(
-                        (prev[- self.backcast + self.forecast:],
-                        np.full((self.forecast,prev.shape[1]), 0, dtype=np.double))
+                        (prev[- backcast + forecast:],
+                        np.full((forecast,prev.shape[1]), 0, dtype=np.double))
                     )
-                prev[-self.forecast:,col_labels] = predictions[pred_line: pred_line + self.forecast]
+                prev[-forecast:,col_labels] = predictions[pred_line: pred_line + forecast]
 
         return predictions, targets
 
-    def predict_all(self, override = False):
-        if not override:
-            self.load_targets()
-            self.load_preds_errors()
-
-        # nbeats target skip first ts (backcast distance)
-        self.targs = {i: self.targs[i][self.backcast:,] for i in self.targs}
-
-        predicted_models = []
-        self.delete_service(predict = True)
-
-        for model in self.progress_bar(self.models):
-            self.create_service(model, predict = True)
-
-            for datafile in self.progress_bar(self.datafiles):
-                if datafile not in self.preds:
-                    self.preds[datafile] = {}
-                    self.errors[datafile] = {}
-
-                if model in self.preds[datafile] and not override:
-                    self.log_progress("skipping predict for %s with model %s: already exist" % (datafile, model))
-                    continue
-
-                datapath = os.path.join(self.datadir, datafile)
-
-                if self.autoregressive:
-                    pred, targ = self.get_nbeats_autoregression(datapath, self.backcast, -1)
-                else:
-                    pred, predictions_list, npreds, targ = self.get_preds_targets_nbeats(datapath)
-
-                self.preds[datafile][model] = pred
-                common_len = min(len(pred), len(targ))
-                self.errors[datafile][model] = pred[:common_len] - targ[:common_len]
-                self.targs[datafile] = targ
-
-            predicted_models.append(model)
-            self.delete_service(predict = True)
-
-        self.dump_model_preds(predicted_models)
-        self.log_job_done()
+    def predict_file(self, datapath):
+        if self.autoregressive.value:
+            pred, targ = self.get_nbeats_autoregression(datapath, self.backcast_timesteps.value, -1)
+        else:
+            pred, predictions_list, npreds, targ = self.get_preds_targets_nbeats(datapath)
+        return pred, targ
