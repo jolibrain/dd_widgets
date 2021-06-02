@@ -262,6 +262,7 @@ class ImageTrainerMixin(MLWidget):
             "width": width,
             "height": height,
             "bw": self.bw.value,
+            "histogram_equalization": self.histogram_equalization.value,
             "db": True,
         }
 
