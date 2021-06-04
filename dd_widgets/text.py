@@ -73,11 +73,8 @@ class Text(TextTrainerMixin):
         scale_pos_weight: float = 1.0,
         autoencoder: bool = False,
         lregression: bool = False,
-        dropout: float = .2,
         finetune: bool = False,
         weights: str = "",
-        class_weights: List[float] = [],
-        test_batch_size: int = 16,
         iter_size: int = 1,
         target_repository: str = "",
         ##-- new txt input conns stuff for bert and gpt2
