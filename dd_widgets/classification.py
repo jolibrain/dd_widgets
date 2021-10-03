@@ -63,6 +63,7 @@ class Classification(ImageTrainerMixin):
         mirror: bool = False,
         rotate: bool = False,
         scale: float = 1.0,
+        rgb: bool = False,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,

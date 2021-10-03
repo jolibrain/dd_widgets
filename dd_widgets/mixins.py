@@ -276,6 +276,12 @@ class ImageTrainerMixin(MLWidget):
         if self.ctc.value:
             parameters_input["ctc"] = True
 
+        if self.rgb.value:
+            parameters_input["rgb"] = self.rgb.value
+
+        if self.scale.value:
+            parameters_input["scale"] = self.scale.value
+            
         return parameters_input
 
     def _create_parameters_mllib(self) -> JSONType:

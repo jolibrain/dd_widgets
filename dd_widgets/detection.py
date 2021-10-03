@@ -68,6 +68,7 @@ class Detection(ImageTrainerMixin):
         mirror: bool = False,
         rotate: bool = False,
         scale: float = 1.0,
+        rgb: bool = False,
         all_effects: bool = False,
         persp_horizontal: bool = True,
         persp_vertical: bool = True,
