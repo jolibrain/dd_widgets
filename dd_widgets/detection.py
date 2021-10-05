@@ -39,7 +39,7 @@ class Detection(ImageTrainerMixin):
         mllib: str = "caffe",
         engine: Engine = "DEFAULT",
         training_repo: Path = None,
-        testing_repo: Path = None,
+        testing_repo: List[Path] = None,
         description: str = "Detection service",
         model_repo: Path = None,
         host: str = "localhost",

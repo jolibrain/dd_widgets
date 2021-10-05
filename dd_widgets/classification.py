@@ -36,7 +36,7 @@ class Classification(ImageTrainerMixin):
         mllib: str = "caffe",
         engine: Engine = "DEFAULT",
         training_repo: Path = None,
-        testing_repo: Path = None,
+        testing_repo: List[Path] = None,
         description: str = "classification service",
         model_repo: Path = None,
         host: str = "localhost",
