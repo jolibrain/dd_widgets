@@ -17,6 +17,8 @@ from .core import JSONType, TalkWithDD
 from .loghandler import OutputWidgetHandler
 from .types import GPUIndex, GPUSelect, Solver, SolverDropdown, Engine, EngineDropdown
 
+import sys
+
 # fmt: on
 
 info_loghandler = OutputWidgetHandler()
@@ -271,8 +273,10 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
 
     def _train_data(self) -> List[str]:
         train_data = [self.training_repo.value]
-        if self.testing_repo.value != "":
-            train_data.append(self.testing_repo.value)
+        if self.testing_repo.value != None:
+        testing_repo = eval(self.testing_repo.value)
+            for tr in testing_repo:
+                train_data.append(tr)
         return train_data
 
     def __init__(self, sname: str, local_vars: Dict[str, Any], *args) -> None:

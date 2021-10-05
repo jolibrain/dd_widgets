@@ -35,7 +35,7 @@ class Regression(ImageTrainerMixin):
         mllib: str = "caffe",
         engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
-        testing_repo: Path = None,
+        testing_repo: List[Path] = None,
         description: str = "classification service",
         model_repo: Optional[str] = None,
         host: str = "localhost",

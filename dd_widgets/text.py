@@ -18,7 +18,7 @@ class Text(TextTrainerMixin):
         mllib: str = "caffe",
         engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path,
-        testing_repo: Optional[Path] = None,
+        testing_repo: Optional[List[Path]] = None,
         description: str = "Text service",
         model_repo: Path = None,
         host: str = "localhost",

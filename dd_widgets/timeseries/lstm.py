@@ -18,7 +18,7 @@ class LSTM(Timeseries):
                 model_repo: Path = None,
                 mllib: str = "torch",
                 training_repo: Path = None,
-                testing_repo: Path = None,
+                testing_repo: List[Path] = None,
                 host: str = "localhost",
                 port: int = 1234,
                 gpuid: GPUIndex = 0,

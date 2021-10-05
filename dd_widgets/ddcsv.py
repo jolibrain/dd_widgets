@@ -17,7 +17,7 @@ class CSV(TextTrainerMixin):
         mllib: str = "caffe",
         engine: Engine = "CUDNN_SINGLE_HANDLE",
         training_repo: Path = None,
-        testing_repo: Path = None,
+        testing_repo: List[Path] = None,
         description: str = "CSV service",
         model_repo: Path = None,
         host: str = "localhost",
