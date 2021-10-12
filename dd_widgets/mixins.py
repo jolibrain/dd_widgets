@@ -154,7 +154,7 @@ class ImageTrainerMixin(MLWidget):
                 disabled=False,
             )
 
-            self.testing_repo.observe(  # type: ignore
+            eval(self.testing_repo.value)[0].observe(  # type: ignore
                 self.update_label_list, names="value"
             )
             self.training_repo.observe(  # type: ignore
@@ -170,7 +170,7 @@ class ImageTrainerMixin(MLWidget):
                 description=Path(self.training_repo.value).name  # type: ignore
             )
             self.test_labels = Button(
-                description=Path(self.testing_repo.value).name  # type: ignore
+                description=Path(eval(self.testing_repo.value)[0]).name  # type: ignore
             )
 
             self.train_labels.on_click(self.update_train_file_list)
@@ -204,7 +204,7 @@ class ImageTrainerMixin(MLWidget):
             # print (Path(self.training_repo.value).read_text().split('\n'))
             self.file_dict = {
                 Path(x.split()[0]): Path(x.split()[1])
-                for x in Path(self.testing_repo.value).read_text().split("\n")
+                for x in Path(eval(self.testing_repo.value)[0]).read_text().split("\n")
                 if len(x.split()) >= 2
             }
 
@@ -231,7 +231,7 @@ class ImageTrainerMixin(MLWidget):
             if len(self.test_labels.value) == 0:
                 return
             directory = (
-                Path(self.testing_repo.value) / self.test_labels.value[0]
+                Path(eval(self.testing_repo.value)[0]) / self.test_labels.value[0]
             )
             self.file_list.options = [
                 fh.as_posix()

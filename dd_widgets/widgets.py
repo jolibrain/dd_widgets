@@ -274,7 +274,7 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
     def _train_data(self) -> List[str]:
         train_data = [self.training_repo.value]
         if self.testing_repo.value != None:
-        testing_repo = eval(self.testing_repo.value)
+            testing_repo = eval(self.testing_repo.value)
             for tr in testing_repo:
                 train_data.append(tr)
         return train_data
@@ -440,10 +440,10 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
                 )
                 self.train_labels.rows = min(10, len(self.train_labels.options))
 
-            if self.testing_repo.value != "":
+            if self.testing_repo.value[0] != "":
                 self.test_labels.options = tuple(
                     sorted(
-                        f.stem for f in Path(self.testing_repo.value).glob("*")
+                        f.stem for f in Path(self.testing_repo.value[0]).glob("*")
                     )
                 )
                 self.test_labels.rows = min(10, len(self.test_labels.options))
