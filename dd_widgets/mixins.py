@@ -154,6 +154,9 @@ class ImageTrainerMixin(MLWidget):
                 disabled=False,
             )
 
+            if not ',' in self.testing_repo.value:
+                self.testing_repo.value = '[\''+self.testing_repo.value+'\']'
+            
             eval(self.testing_repo.value)[0].observe(  # type: ignore
                 self.update_label_list, names="value"
             )
@@ -169,6 +172,8 @@ class ImageTrainerMixin(MLWidget):
             self.train_labels = Button(
                 description=Path(self.training_repo.value).name  # type: ignore
             )
+            if not ',' in self.testing_repo.value:
+                self.testing_repo.value = '[\''+self.testing_repo.value+'\']'
             self.test_labels = Button(
                 description=Path(eval(self.testing_repo.value)[0]).name  # type: ignore
             )
