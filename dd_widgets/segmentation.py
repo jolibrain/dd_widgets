@@ -46,7 +46,10 @@ class Segmentation(ImageTrainerMixin):
         template: Optional[str] = None,
         mirror: bool = True,
         rotate: bool = True,
+        mean: List[float] = [],
+        std: List[float] = [],
         scale: float = 1.0,
+        rgb: bool = False,
         tsplit: float = 0.0,
         finetune: bool = False,
         resume: bool = False,
@@ -131,6 +134,7 @@ class Segmentation(ImageTrainerMixin):
     def _create_parameters_mllib(self) -> JSONType:
         dic = super()._create_parameters_mllib()
         dic["loss"] = self.loss.value
+        dic["segmentation"] = True
         return dic
 
     def _train_parameters_input(self) -> JSONType:
@@ -138,6 +142,13 @@ class Segmentation(ImageTrainerMixin):
         dic["segmentation"] = True
         return dic
 
+    def _train_parameters_mllib(self) -> JSONType:
+        dic = super()._train_parameters_mllib()
+        dic["segmentation"] = True
+        dic["std"] = eval(self.std.value)
+        dic["mean"] = eval(self.mean.value)
+        return dic
+    
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
         dic["measure"] = ["acc"]
