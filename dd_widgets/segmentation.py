@@ -71,13 +71,14 @@ class Segmentation(ImageTrainerMixin):
         lr_dropout : float = 1.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
+        cutout_prob: float = 0.0,
         # -- geometry --
         # all_effects: bool = False,
         persp_horizontal: bool = False,
         persp_vertical: bool = False,
         zoom_out: bool = False,
         zoom_in: bool = False,
-        pad_mode: str = "MIRRORED",
+        pad_mode: str = "CONSTANT",
         persp_factor: float = 0.25,
         zoom_factor: float = 0.25,
         geometry_prob: float = 0.0,
@@ -140,13 +141,14 @@ class Segmentation(ImageTrainerMixin):
     def _train_parameters_input(self) -> JSONType:
         dic = super()._train_parameters_input()
         dic["segmentation"] = True
+        dic["std"] = eval(self.std.value)
+        dic["scale"] = self.scale.value
+        dic["mean"] = eval(self.mean.value)
         return dic
 
     def _train_parameters_mllib(self) -> JSONType:
         dic = super()._train_parameters_mllib()
         dic["segmentation"] = True
-        dic["std"] = eval(self.std.value)
-        dic["mean"] = eval(self.mean.value)
         return dic
     
     def _train_parameters_output(self) -> JSONType:

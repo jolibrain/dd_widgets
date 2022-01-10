@@ -85,6 +85,7 @@ class Classification(ImageTrainerMixin):
         lr_dropout : float = 1.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
+        cutout_prob: float = 0.0,
         # -- geometry --
         #all_effects: bool = False,
         persp_horizontal: bool = False,

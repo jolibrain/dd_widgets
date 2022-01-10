@@ -99,6 +99,7 @@ class Detection(ImageTrainerMixin):
         lr_dropout : float = 1.0,
         noise_prob: float = 0.001,
         distort_prob: float = 0.5,
+        cutout_prob: float = 0.0,
         test_init: bool = False,
         class_weights: List[float] = [],
         weights: Path = None,
