@@ -260,7 +260,8 @@ class ImageTrainerMixin(MLWidget):
                 # change permission if dede is not run by current user
                 Path(self.model_repo.value).chmod(0o777)
 
-            shutil.copy(self.weights.value, self.model_repo.value + "/")
+            if not self.resume.value:
+                shutil.copy(self.weights.value, self.model_repo.value + "/")
 
         parameters_input = {
             "connector": "image",
