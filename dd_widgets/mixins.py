@@ -157,7 +157,7 @@ class ImageTrainerMixin(MLWidget):
             if not ',' in self.testing_repo.value:
                 self.testing_repo.value = '[\''+self.testing_repo.value+'\']'
             
-            eval(self.testing_repo.value)[0].observe(  # type: ignore
+            self.testing_repo.observe(  # type: ignore
                 self.update_label_list, names="value"
             )
             self.training_repo.observe(  # type: ignore
