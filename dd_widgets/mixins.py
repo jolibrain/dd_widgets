@@ -75,6 +75,7 @@ class TextTrainerMixin(MLWidget):
                 "base_lr": self.base_lr.value,
                 "warmup_lr": self.warmup_lr.value,
                 "warmup_iter": self.warmup_iter.value,
+                "weight_decay": self.weight_decay.value,
                 "solver_type": self.solver_type.value,
                 "sam": self.sam.value,
                 "swa": self.swa.value,
