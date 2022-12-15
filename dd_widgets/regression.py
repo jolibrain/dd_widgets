@@ -24,9 +24,7 @@ class Regression(ImageTrainerMixin):
                     self.img_width.value = str(shape[0])
                 if self.img_height.value == "":
                     self.img_height.value = str(shape[1])
-                display(
-                    img
-                )  # TODO display next to each other with shape info as well
+                display(img)  # TODO display next to each other with shape info as well
 
     def __init__(
         self,
@@ -63,6 +61,7 @@ class Regression(ImageTrainerMixin):
         mirror: bool = False,
         rotate: bool = False,
         scale: float = 1.0,
+        rgb: bool = False,
         persp_horizontal: bool = None,
         persp_vertical: bool = None,
         zoom_out: bool = None,
@@ -81,17 +80,18 @@ class Regression(ImageTrainerMixin):
         test_batch_size: int = 16,
         iter_size: int = 1,
         solver_type: Solver = "SGD",
-        sam : bool = False,
-        swa : bool = False,
-        lookahead : bool = False,
-        lookahead_steps : int = 6,
-        lookahead_alpha : float = 0.5,
-        rectified : bool = False,
-        decoupled_wd_periods : int = 4,
-        decoupled_wd_mult : float = 2.0,
-        lr_dropout : float = 1.0,
+        sam: bool = False,
+        swa: bool = False,
+        lookahead: bool = False,
+        lookahead_steps: int = 6,
+        lookahead_alpha: float = 0.5,
+        rectified: bool = False,
+        decoupled_wd_periods: int = 4,
+        decoupled_wd_mult: float = 2.0,
+        lr_dropout: float = 1.0,
         noise_prob: float = 0.0,
         distort_prob: float = 0.0,
+        cutout_prob: float = 0.0,
         test_init: bool = False,
         class_weights: List[float] = [],
         weights: Path = None,
