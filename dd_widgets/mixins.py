@@ -488,6 +488,8 @@ class ImageTrainerMixin(MLWidget):
                         [
                             self.persp_horizontal.value,
                             self.persp_vertical.value,
+                            self.transl_horizontal.value,
+                            self.transl_vertical.value,
                             self.zoom_out.value,
                             self.zoom_in.value,
                         ]
@@ -495,6 +497,7 @@ class ImageTrainerMixin(MLWidget):
                     p != ""
                     for p in [
                             self.persp_factor.value,
+                            self.transl_factor.value,
                             self.zoom_factor.value,
                             self.pad_mode.value,
                             self.geometry_prob.value,
@@ -506,6 +509,10 @@ class ImageTrainerMixin(MLWidget):
                         dic["geometry"]["persp_horizontal"] = True
                     if self.persp_vertical.value:
                         dic["geometry"]["persp_vertical"] = True
+                    if self.transl_horizontal.value:
+                        dic["geometry"]["transl_horizontal"] = True
+                    if self.transl_vertical.value:
+                        dic["geometry"]["transl_vertical"] = True
                     if self.zoom_out.value:
                         dic["geometry"]["zoom_out"] = True
                     if self.zoom_in.value:
@@ -516,6 +523,8 @@ class ImageTrainerMixin(MLWidget):
                         # -- float --
                     if self.persp_factor.value != "":
                         dic["geometry"]["persp_factor"] = float(self.persp_factor.value)
+                    if self.transl_factor.value != "":
+                        dic["geometry"]["transl_factor"] = float(self.transl_factor.value)
                     if self.zoom_factor.value != "":
                         dic["geometry"]["zoom_factor"] = float(self.zoom_factor.value)
                     if self.geometry_prob.value != "":
