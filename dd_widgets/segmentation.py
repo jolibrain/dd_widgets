@@ -76,10 +76,13 @@ class Segmentation(ImageTrainerMixin):
         # all_effects: bool = False,
         persp_horizontal: bool = False,
         persp_vertical: bool = False,
+        transl_horizontal: bool = False,
+        transl_vertical: bool = False,
         zoom_out: bool = False,
         zoom_in: bool = False,
         pad_mode: str = "CONSTANT",
         persp_factor: float = 0.25,
+        transl_factor: float = 0.5,
         zoom_factor: float = 0.25,
         geometry_prob: float = 0.0,
         # -- / geometry --
