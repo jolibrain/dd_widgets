@@ -135,10 +135,10 @@ class Regression(ImageTrainerMixin):
 
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
-        dic["measure"] = ["eucll"]
+        dic["measure"] = ["eucll", "l1"]
         return dic
 
     def _create_parameters_output(self) -> JSONType:
         dic = super()._create_parameters_output()
-        dic["measure"] = ["eucll"]
+        dic["measure"] = ["eucll", "l1"]
         return dic
