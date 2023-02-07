@@ -50,6 +50,7 @@ class Detection(ImageTrainerMixin):
         nclasses: int = -1,
         img_width: Optional[int] = None,
         img_height: Optional[int] = None,
+        db: bool = True,
         db_width: int = 0,
         db_height: int = 0,
         base_lr: float = 1e-4,
@@ -128,6 +129,7 @@ class Detection(ImageTrainerMixin):
     def _create_parameters_input(self) -> JSONType:
         dic = super()._create_parameters_input()
         dic['bbox'] = True
+        dic["db"] = self.db.value
         return dic
 
     def _create_parameters_mllib(self) -> JSONType:
@@ -139,17 +141,20 @@ class Detection(ImageTrainerMixin):
                'ssd_neg_overlap':self.ssd_neg_overlap.value,
                'ssd_keep_top_k':self.ssd_keep_top_k.value}
         dic.update(net)
+        dic["db"] = self.db.value
         return dic
     
     def _train_parameters_input(self) -> JSONType:
         dic = super()._train_parameters_input()
         dic["db_width"] = self.db_width.value
         dic["db_height"] = self.db_height.value
+        dic["db"] = self.db.value
         return dic
 
     def _train_parameters_mllib(self) -> JSONType:
         dic = super()._train_parameters_mllib()
         dic['bbox'] = True
+        dic["db"] = self.db.value
         return dic
 
     def _train_parameters_output(self) -> JSONType:
