@@ -107,6 +107,7 @@ class Detection(ImageTrainerMixin):
         test_init: bool = False,
         class_weights: List[float] = [],
         weights: Path = None,
+        map_thresholds: List[int] = [50],
         tboard: Optional[Path] = None,
         ignore_label: int = -1,
         multi_label: bool = False,
@@ -159,5 +160,9 @@ class Detection(ImageTrainerMixin):
 
     def _train_parameters_output(self) -> JSONType:
         dic = super()._train_parameters_output()
+        # legacy
         dic['measure'] = ['map']
+        if self.map_thresholds.value:
+            thresholds = eval(self.map_thresholds.value)
+            dic['measure'] += ["map-%d" % i for i in thresholds]
         return dic
