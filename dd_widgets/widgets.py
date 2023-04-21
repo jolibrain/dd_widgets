@@ -69,8 +69,8 @@ class BasicWidget:
         )
         super().__init__(*args, **kwargs)
 
-    def _ipython_display_(self):
-        self._main_elt._ipython_display_()
+    def _repr_mimebundle_(self, **kwargs):
+        return self._main_elt._repr_mimebundle_(**kwargs)
 
     @property
     def status(self):
