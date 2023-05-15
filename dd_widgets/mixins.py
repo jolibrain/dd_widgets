@@ -1,13 +1,14 @@
 import logging
 import os
 import shutil
+import requests
 from pathlib import Path
 
 from ipywidgets import Button, HBox, SelectMultiple
 
 from .core import JSONType
 from .widgets import MLWidget
-from .utils import sample_from_iterable
+from .utils import sample_from_iterable, is_url
 
 
 class TextTrainerMixin(MLWidget):
@@ -262,7 +263,14 @@ class ImageTrainerMixin(MLWidget):
                 Path(self.model_repo.value).chmod(0o777)
 
             if not self.resume.value:
-                shutil.copy(self.weights.value, self.model_repo.value + "/")
+                if is_url(self.weights.value):
+                    filename = self.weights.value.split("/")[-1]
+                    r = requests.get(self.weights.value, allow_redirects=True)
+
+                    with open(os.path.join(self.model_repo.value, filename), "wb") as weights_file:
+                        weights_file.write(r.content)
+                else:
+                    shutil.copy(self.weights.value, self.model_repo.value + "/")
 
         parameters_input = {
             "connector": "image",

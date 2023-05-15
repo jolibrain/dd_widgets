@@ -3,6 +3,7 @@ from heapq import nlargest
 from pathlib import Path
 from tempfile import mkstemp
 from typing import Iterator, Optional, Tuple, TypeVar
+import re
 
 import matplotlib.pyplot as plt
 from IPython.display import Image
@@ -16,6 +17,18 @@ Elt = TypeVar("Elt")
 
 def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
+
+
+def is_url(path):
+    regex = re.compile(
+        r'^(?:http|ftp)s?://' # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+        r'localhost|' #localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+        r'(?::\d+)?' # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE
+    )
+    return re.match(regex, path) is not None
 
 
 def img_handle(
