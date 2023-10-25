@@ -429,10 +429,13 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
                 )
             )
 
+    def get_update_test_file_list(self, test_id):
+        return lambda *args: self.update_test_file_list(test_id, *args)
+
     def update_label_list(self, _):
         # should this be here?
         with self.output:
-            if self.training_repo.value != "":
+            if self.training_repo.value != "" and type(self.train_labels) == SelectMultiple:
                 self.train_labels.options = tuple(
                     sorted(
                         f.stem for f in Path(self.training_repo.value).glob("*")
@@ -440,12 +443,14 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
                 )
                 self.train_labels.rows = min(10, len(self.train_labels.options))
 
-            if self.testing_repo.value[0] != "":
+                if self.nclasses.value == -1:
+                    self.nclasses.value = str(len(self.train_labels.options))
+
+            if self.testing_repo.value != "" and type(self.test_labels) == SelectMultiple:
+                testing_repos = eval(self.testing_repo.value)
                 self.test_labels.options = tuple(
                     sorted(
-                        f.stem for f in Path(self.testing_repo.value[0]).glob("*")
+                        f.stem for f in Path(testing_repos[0]).glob("*")
                     )
                 )
                 self.test_labels.rows = min(10, len(self.test_labels.options))
-            if self.nclasses.value == -1:
-                self.nclasses.value = str(len(self.train_labels.options))
