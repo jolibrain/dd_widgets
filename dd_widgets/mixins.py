@@ -156,9 +156,9 @@ class ImageTrainerMixin(MLWidget):
                 disabled=False,
             )
 
-            if not ',' in self.testing_repo.value:
-                self.testing_repo.value = '[\''+self.testing_repo.value+'\']'
-            
+            if not "," in self.testing_repo.value:
+                self.testing_repo.value = "['" + self.testing_repo.value + "']"
+
             self.testing_repo.observe(  # type: ignore
                 self.update_label_list, names="value"
             )
@@ -170,22 +170,31 @@ class ImageTrainerMixin(MLWidget):
             self.test_labels.observe(self.update_test_dir_list, names="value")
             self.file_list.observe(self.display_img, names="value")
 
+            labels_hbox = HBox([self.train_labels, self.test_labels])
         else:
             self.train_labels = Button(
                 description=Path(self.training_repo.value).name  # type: ignore
             )
-            if not ',' in self.testing_repo.value:
-                self.testing_repo.value = '[\''+self.testing_repo.value+'\']'
-            self.test_labels = Button(
-                description=Path(eval(self.testing_repo.value)[0]).name  # type: ignore
-            )
+            if not "," in self.testing_repo.value:
+                self.testing_repo.value = "['" + self.testing_repo.value + "']"
+
+            test_files = eval(self.testing_repo.value)
+            self.test_labels = []
+
+            for i in range(len(test_files)):
+                test_file = test_files[i]
+                self.test_labels.append(
+                    Button(description=Path(test_file).name)  # type: ignore
+                )
+                self.test_labels[-1].on_click(self.get_update_test_file_list(i))
 
             self.train_labels.on_click(self.update_train_file_list)
-            self.test_labels.on_click(self.update_test_file_list)
             self.file_list.observe(self.display_img, names="value")
 
+            labels_hbox = HBox([self.train_labels, *self.test_labels])
+
         self._img_explorer.children = [
-            HBox([HBox([self.train_labels, self.test_labels])]),
+            HBox([labels_hbox]),
             self.file_list,
             self.output,
         ]
@@ -206,12 +215,12 @@ class ImageTrainerMixin(MLWidget):
                 for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
 
-    def update_test_file_list(self, *args):
+    def update_test_file_list(self, test_id, *args):
         with self.output:
             # print (Path(self.training_repo.value).read_text().split('\n'))
             self.file_dict = {
                 Path(x.split()[0]): Path(x.split()[1])
-                for x in Path(eval(self.testing_repo.value)[0]).read_text().split("\n")
+                for x in Path(eval(self.testing_repo.value)[test_id]).read_text().split("\n")
                 if len(x.split()) >= 2
             }
 

@@ -132,12 +132,13 @@ class OCR(ImageTrainerMixin):
                 for fh in sample_from_iterable(self.file_dict.keys(), 10)
             ]
 
-    def update_test_file_list(self, *args):
+    def update_test_file_list(self, test_id, *args):
         with self.output:
             # print (Path(self.training_repo.value).read_text().split('\n'))
+            testing_repos = eval(self.testing_repo.value)
             self.file_dict = {
                 Path(x.split()[0]): x.split()[1:]
-                for x in Path(self.testing_repo.value).read_text().split("\n")
+                for x in Path(testing_repos[test_id]).read_text().split("\n")
                 if len(x.split()) >= 2
             }
 
