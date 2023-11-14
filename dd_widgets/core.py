@@ -85,6 +85,12 @@ class TalkWithDD:
             self.status = json_dict["head"]
         return json_dict
 
+    def _init_repository(self, ):
+        """
+        Copy pretrained weights and model files if necessary
+        """
+        pass
+
     def _create(self, *_) -> JSONType:
         logging.info("Entering _create method")
         host = self.host.value
@@ -137,10 +143,12 @@ class TalkWithDD:
             )
 
     def run(self, *_) -> JSONType:
+        self._init_repository()
         self._create()
         return self.train(resume=False)
 
     def dry_run(self, *_) -> JSONType:
+        self._init_repository()
         self._create()
         return self.dry_train()
 
