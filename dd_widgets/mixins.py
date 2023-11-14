@@ -255,12 +255,8 @@ class ImageTrainerMixin(MLWidget):
             ]
             self.train_labels.value = []
 
-    def _create_parameters_input(self) -> JSONType:
-
-        width = int(self.img_width.value)
-        height = int(self.img_height.value)
-
-        if self.weights.value:
+    def _init_repository(self, resume: bool = None):
+        if self.weights.value and not self.resume.value:
             if not Path(self.model_repo.value).is_dir():
                 logging.warn(
                     "Creating repository directory: {}".format(
@@ -271,15 +267,19 @@ class ImageTrainerMixin(MLWidget):
                 # change permission if dede is not run by current user
                 Path(self.model_repo.value).chmod(0o777)
 
-            if not self.resume.value:
-                if is_url(self.weights.value):
-                    filename = self.weights.value.split("/")[-1]
-                    r = requests.get(self.weights.value, allow_redirects=True)
+            if is_url(self.weights.value):
+                filename = self.weights.value.split("/")[-1]
+                r = requests.get(self.weights.value, allow_redirects=True)
 
-                    with open(os.path.join(self.model_repo.value, filename), "wb") as weights_file:
-                        weights_file.write(r.content)
-                else:
-                    shutil.copy(self.weights.value, self.model_repo.value + "/")
+                with open(os.path.join(self.model_repo.value, filename), "wb") as weights_file:
+                    weights_file.write(r.content)
+            else:
+                shutil.copy(self.weights.value, self.model_repo.value + "/")
+
+    def _create_parameters_input(self) -> JSONType:
+
+        width = int(self.img_width.value)
+        height = int(self.img_height.value)
 
         parameters_input = {
             "connector": "image",
