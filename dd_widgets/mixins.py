@@ -140,6 +140,9 @@ class ImageTrainerMixin(MLWidget):
         if not training_path.exists():
             raise RuntimeError("Path {} does not exist".format(training_path))
 
+        if not "," in self.testing_repo.value and self.testing_repo.value != "":
+            self.testing_repo.value = "['" + self.testing_repo.value + "']"
+
         if training_path.is_dir():
 
             self.train_labels = SelectMultiple(
@@ -155,9 +158,6 @@ class ImageTrainerMixin(MLWidget):
                 description="Testing labels",
                 disabled=False,
             )
-
-            if not "," in self.testing_repo.value:
-                self.testing_repo.value = "['" + self.testing_repo.value + "']"
 
             self.testing_repo.observe(  # type: ignore
                 self.update_label_list, names="value"
@@ -244,7 +244,7 @@ class ImageTrainerMixin(MLWidget):
 
     def update_test_dir_list(self, *args):
         with self.output:
-            if len(self.test_labels.value) == 0:
+            if len(self.test_labels.value) == 0 or self.testing_repo.value == "":
                 return
             directory = (
                 Path(eval(self.testing_repo.value)[0]) / self.test_labels.value[0]
