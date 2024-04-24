@@ -273,7 +273,7 @@ class MLWidget(TalkWithDD, JSONBuilder, BasicWidget):
 
     def _train_data(self) -> List[str]:
         train_data = [self.training_repo.value]
-        if self.testing_repo.value != None:
+        if self.testing_repo.value != "" and self.testing_repo.value is not None:
             testing_repo = eval(self.testing_repo.value)
             for tr in testing_repo:
                 train_data.append(tr)
