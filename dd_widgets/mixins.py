@@ -175,8 +175,6 @@ class ImageTrainerMixin(MLWidget):
             self.train_labels = Button(
                 description=Path(self.training_repo.value).name  # type: ignore
             )
-            if not "," in self.testing_repo.value:
-                self.testing_repo.value = "['" + self.testing_repo.value + "']"
 
             test_files = eval(self.testing_repo.value)
             self.test_labels = []
