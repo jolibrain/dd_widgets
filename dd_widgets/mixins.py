@@ -8,7 +8,7 @@ from ipywidgets import Button, HBox, SelectMultiple
 
 from .core import JSONType
 from .widgets import MLWidget
-from .utils import sample_from_iterable, is_url
+from .utils import sample_from_iterable, is_url, is_array_string
 
 
 class TextTrainerMixin(MLWidget):
@@ -140,7 +140,7 @@ class ImageTrainerMixin(MLWidget):
         if not training_path.exists():
             raise RuntimeError("Path {} does not exist".format(training_path))
 
-        if not "," in self.testing_repo.value and self.testing_repo.value != "":
+        if not is_array_string(self.testing_repo.value)  and self.testing_repo.value != "":
             self.testing_repo.value = "['" + self.testing_repo.value + "']"
 
         if training_path.is_dir():

@@ -19,6 +19,18 @@ def sample_from_iterable(it: Iterator[Elt], k: int) -> Iterator[Elt]:
     return (x for _, x in nlargest(k, ((random.random(), x) for x in it)))
 
 
+def is_array_string(s):
+    """
+    Return True if this string is represents a python array.
+        The string may be evaluated in the process.
+    """
+    try:
+        s = len(eval(s))
+        return True
+    except:
+        return False
+
+
 def is_url(path):
     regex = re.compile(
         r'^(?:http|ftp)s?://' # http:// or https://
