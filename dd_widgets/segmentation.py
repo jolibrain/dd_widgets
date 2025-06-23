@@ -133,6 +133,7 @@ class Segmentation(ImageTrainerMixin):
     def _create_parameters_input(self) -> JSONType:
         dic = super()._create_parameters_input()
         dic["segmentation"] = True
+        dic["db"] = self.db.value
         return dic
 
     def _create_parameters_mllib(self) -> JSONType:
